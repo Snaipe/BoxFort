@@ -21,20 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef PLT_ELF_H_
-# define PLT_ELF_H_
+#ifndef PLT_H_
+# define PLT_H_
 
-# include <link.h>
+# include <stddef.h>
 
-# ifdef __FreeBSD__
-#  include <sys/elf_generic.h>
-#  define ElfW(type)    ElfW_(Elf, type)
-#  define ElfW_(e,t)    ElfW__(e, _##t)
-#  define ElfW__(e,t)   e##t
+# include "config.h"
+
+# if defined BXF_EXE_FMT_ELF
+#  include "exe-elf.h"
+# elif defined BXF_EXE_FMT_PE
+#  include "exe-pe.h"
+# elif defined BXF_EXE_FMT_MACH_O
+#  include "exe-mach-o.h"
 # endif
 
-typedef struct link_map *bxfi_plt_lib;
-typedef struct r_debug *bxfi_plt_ctx;
-typedef void (bxfi_plt_fn)(void);
+int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
 
-#endif /* !PLT_ELF_H_ */
+#endif /* !PLT_H_ */

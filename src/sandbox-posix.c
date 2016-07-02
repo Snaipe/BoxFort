@@ -36,7 +36,7 @@
 
 #include "addr.h"
 #include "boxfort.h"
-#include "plt.h"
+#include "exe.h"
 
 struct bxfi_sandbox {
     struct bxf_sandbox props;
@@ -120,7 +120,7 @@ static void patch_main(void)
     if (strcmp(__progname, "boxfort-worker"))
         return;
 
-    if (bxfi_plt_patch_main((bxfi_plt_fn *) bxfi_main) < 0)
+    if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
         abort();
 }
 

@@ -8,9 +8,9 @@ set (SOURCE_FILES ${ASM_FILES}
     src/addr.c
     src/addr.h
     src/config.h
-    src/plt.h
-    src/plt-${BXF_EXE_FORMAT}.c
-    src/plt-${BXF_EXE_FORMAT}.h
+    src/exe.h
+    src/exe-${BXF_EXE_FORMAT}.c
+    src/exe-${BXF_EXE_FORMAT}.h
     src/sandbox-${BXF_OS_FAMILY}.c
 )
 

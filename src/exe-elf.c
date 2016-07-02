@@ -27,7 +27,7 @@
 #include <sys/mman.h>
 
 #include "config.h"
-#include "plt.h"
+#include "exe.h"
 #include "addr.h"
 #include "common.h"
 
@@ -57,7 +57,7 @@ typedef ElfW(Auxinfo) ElfAux;
 
 extern char **environ;
 
-static void *lib_dt_lookup(bxfi_plt_lib lib, ElfSWord tag)
+static void *lib_dt_lookup(bxfi_exe_lib lib, ElfSWord tag)
 {
     ElfW(Addr) base =(ElfW(Addr)) lib->l_addr;
     for (const ElfW(Dyn) *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
@@ -135,7 +135,7 @@ static struct r_debug *get_r_debug(void)
     return dbg;
 }
 
-static bxfi_plt_ctx init_plt_ctx(void)
+static bxfi_exe_ctx init_exe_ctx(void)
 {
     static struct r_debug *dbg = (void*) -1;
     if (dbg == (void*) -1)
@@ -175,7 +175,7 @@ static ElfW(Sym) *elf_hash_find(ElfW(Word) *hash, ElfW(Sym) *symtab,
     return NULL;
 }
 
-static ElfW(Sym) *dynsym_lookup(bxfi_plt_lib lib, const char *name)
+static ElfW(Sym) *dynsym_lookup(bxfi_exe_lib lib, const char *name)
 {
     ElfW(Word) *hash    = lib_dt_lookup(lib, DT_HASH);
     ElfW(Sym) *symtab   = lib_dt_lookup(lib, DT_SYMTAB);
@@ -187,9 +187,9 @@ static ElfW(Sym) *dynsym_lookup(bxfi_plt_lib lib, const char *name)
     return elf_hash_find (hash, symtab, strtab, name);
 }
 
-extern bxfi_plt_fn main;
+extern bxfi_exe_fn main;
 
-static void *get_main_addr(bxfi_plt_ctx ctx)
+static void *get_main_addr(bxfi_exe_ctx ctx)
 {
     /* It just so happens that `main` can exist in the symbol hash table of
        our executable if it is a dynamic symbol, and gives the address of
@@ -213,9 +213,9 @@ extern void *bxfi_trampoline_end;
 
 #define PAGE_SIZE 4096
 
-int bxfi_plt_patch_main(bxfi_plt_fn *new_main)
+int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
-    void *addr = get_main_addr(init_plt_ctx());
+    void *addr = get_main_addr(init_exe_ctx());
     if (!addr)
         return -1;
 
