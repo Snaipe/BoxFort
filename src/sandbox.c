@@ -21,30 +21,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef CONFIG_H_IN_
-# define CONFIG_H_IN_
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
 
-#define BXF_ARCH "x86_64"
-#define BXF_BITS 64
-#define BXF_MANGLING none
-#define BXF_OS_FAMILY posix
+#include "addr.h"
+#include "exe.h"
+#include "sandbox.h"
 
-# ifdef BXF_OS_FAMILY
-#  define BXF_OS_FAMILY_STR #BXF_OS_FAMILY
-# endif
+static int bxfi_main(void)
+{
+    char map_name[sizeof ("bxfi_") + 21];
+    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
 
-/* #undef BXF_ARCH_x86 */
-#define BXF_ARCH_x86_64 1
-/* #undef BXF_ARCH_ARM */
-/* #undef BXF_ARCH_ARM64 */
+    struct bxfi_map local_ctx;
+    if (bxfi_map_local_ctx(&local_ctx, map_name) < 0)
+        abort();
 
-#define BXF_EXE_FMT_ELF 1
-/* #undef BXF_EXE_FMT_PE */
-/* #undef BXF_EXE_FMT_MACH_O */
+    struct bxfi_addr addr = {
+        .soname = (char *)(local_ctx.ctx + 1),
+        .addr   = local_ctx.ctx->fn,
+    };
+    bxf_fn *fn = bxfi_denormalize_fnaddr(&addr);
 
-#define HAVE__R_DEBUG 1
-#define HAVE__DYNAMIC 1
-#define HAVE_ELF_AUXV_T 1
-/* #undef HAVE_ELF_AUXINFO */
+    if (!fn)
+        abort();
 
-#endif /* !CONFIG_H_IN_ */
+    local_ctx.ctx->ok = 1;
+    bxfi_unmap_local_ctx(&local_ctx, map_name, 1);
+
+    raise(SIGSTOP);
+
+    return fn();
+}
+
+__attribute__((constructor))
+static void patch_main(void)
+{
+    char map_name[sizeof ("bxfi_") + 21];
+    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
+
+    if (!bxfi_check_local_ctx(map_name))
+        return;
+
+    if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
+        abort();
+}

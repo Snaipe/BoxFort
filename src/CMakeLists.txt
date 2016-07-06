@@ -12,6 +12,9 @@ set (SOURCE_FILES ${ASM_FILES}
     src/exe-${BXF_EXE_FORMAT}.c
     src/exe-${BXF_EXE_FORMAT}.h
     src/sandbox-${BXF_OS_FAMILY}.c
+    src/sandbox-${BXF_OS_FAMILY}.h
+    src/sandbox.c
+    src/sandbox.h
 )
 
 configure_file(

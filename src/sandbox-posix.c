@@ -38,21 +38,10 @@
 #include "addr.h"
 #include "boxfort.h"
 #include "exe.h"
+#include "sandbox.h"
 
 struct bxfi_sandbox {
     struct bxf_sandbox props;
-};
-
-struct bxfi_context {
-    size_t total_sz;
-    void *fn;
-    size_t fn_soname_sz;
-    int ok;
-};
-
-struct bxfi_map {
-    struct bxfi_context *ctx;
-    int fd;
 };
 
 static int bxfi_create_local_ctx(struct bxfi_map *map,
@@ -87,7 +76,7 @@ error:;
     return -err;
 }
 
-static int bxfi_check_local_ctx(const char *name)
+int bxfi_check_local_ctx(const char *name)
 {
     int fd = shm_open(name, O_RDONLY, 0600);
     if (fd != -1)
@@ -95,7 +84,7 @@ static int bxfi_check_local_ctx(const char *name)
     return fd != -1;
 }
 
-static int bxfi_map_local_ctx(struct bxfi_map *map, const char *name)
+int bxfi_map_local_ctx(struct bxfi_map *map, const char *name)
 {
     int fd = shm_open(name, O_RDWR, 0600);
     if (fd == -1)
@@ -125,7 +114,7 @@ error:;
     return -err;
 }
 
-static int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int destroy)
+int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int destroy)
 {
     size_t sz = map->ctx->total_sz;
     munmap(map->ctx, sz);
@@ -137,48 +126,7 @@ static int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int dest
     return 0;
 }
 
-extern char *__progname;
-
-static int bxfi_main(void)
-{
-    char map_name[sizeof ("bxfi_") + 21];
-    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
-
-    struct bxfi_map local_ctx;
-    if (bxfi_map_local_ctx(&local_ctx, map_name) < 0)
-        abort();
-
-    struct bxfi_addr addr = {
-        .soname = (char *)(local_ctx.ctx + 1),
-        .addr   = local_ctx.ctx->fn,
-    };
-    bxf_fn *fn = bxfi_denormalize_fnaddr(&addr);
-
-    if (!fn)
-        abort();
-
-    local_ctx.ctx->ok = 1;
-    bxfi_unmap_local_ctx(&local_ctx, map_name, 1);
-
-    raise(SIGSTOP);
-
-    return fn();
-}
-
-__attribute__((constructor(65535)))
-static void patch_main(void)
-{
-    char map_name[sizeof ("bxfi_") + 21];
-    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
-
-    if (!bxfi_check_local_ctx(map_name))
-        return;
-
-    if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
-        abort();
-}
-
-int get_exe_path(char *buf, size_t sz)
+static int get_exe_path(char *buf, size_t sz)
 {
     const char *self = "/proc/self/exe";
 

@@ -27,6 +27,11 @@
 #cmakedefine BXF_ARCH "@BXF_ARCH@"
 #cmakedefine BXF_BITS @BXF_BITS@
 #cmakedefine BXF_MANGLING @BXF_MANGLING@
+#cmakedefine BXF_OS_FAMILY @BXF_OS_FAMILY@
+
+# ifdef BXF_OS_FAMILY
+#  define BXF_OS_FAMILY_STR #BXF_OS_FAMILY
+# endif
 
 #cmakedefine BXF_ARCH_x86 @BXF_ARCH_x86@
 #cmakedefine BXF_ARCH_x86_64 @BXF_ARCH_x86_64@
