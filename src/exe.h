@@ -37,5 +37,9 @@
 # endif
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
+bxfi_exe_lib bxfi_lib_from_addr(void *addr);
+bxfi_exe_lib bxfi_lib_from_name(const char *name);
+const char *bxfi_lib_name(bxfi_exe_lib lib);
+size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib);
 
 #endif /* !PLT_H_ */

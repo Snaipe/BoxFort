@@ -37,4 +37,6 @@ typedef struct link_map *bxfi_exe_lib;
 typedef struct r_debug *bxfi_exe_ctx;
 typedef void (bxfi_exe_fn)(void);
 
+# define BXFI_INVALID_LIB ((bxfi_exe_lib) 0)
+
 #endif /* !PLT_ELF_H_ */

@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +44,10 @@ struct bxfi_sandbox {
 };
 
 struct bxfi_context {
-    bxf_fn *fn;
+    size_t total_sz;
+    void *fn;
+    size_t fn_soname_sz;
+    int ok;
 };
 
 struct bxfi_map {
@@ -51,23 +55,62 @@ struct bxfi_map {
     int fd;
 };
 
-static int bxfi_map_local_ctx(struct bxfi_map *map, const char *name, int create)
+static int bxfi_create_local_ctx(struct bxfi_map *map,
+        const char *name, size_t sz)
 {
-    if (create)
-        shm_unlink(name);
+    shm_unlink(name);
 
-    int flags = O_RDWR | (create ? O_CREAT | O_EXCL : 0);
-    int fd = shm_open(name, flags, 0600);
+    int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
     if (fd == -1)
         goto error;
 
-    if (create && ftruncate(fd, sizeof (struct bxfi_context)))
+    ftruncate(fd, sizeof (struct bxfi_context) + sz);
+
+    struct bxfi_context *ctx = mmap(NULL,
+            sizeof (struct bxfi_context) + sz,
+            PROT_READ | PROT_WRITE,
+            MAP_SHARED, fd, 0);
+
+    if (ctx == MAP_FAILED)
+        goto error;
+
+    ctx->total_sz = sizeof (struct bxfi_context) + sz;
+
+    *map = (struct bxfi_map) { ctx, fd };
+    return 0;
+
+error:;
+    int err = errno;
+    shm_unlink(name);
+    if (fd != -1)
+        close(fd);
+    return -err;
+}
+
+static int bxfi_check_local_ctx(const char *name)
+{
+    int fd = shm_open(name, O_RDONLY, 0600);
+    if (fd != -1)
+        close(fd);
+    return fd != -1;
+}
+
+static int bxfi_map_local_ctx(struct bxfi_map *map, const char *name)
+{
+    int fd = shm_open(name, O_RDWR, 0600);
+    if (fd == -1)
+        goto error;
+
+    size_t total_sz;
+
+    if (read(fd, &total_sz, sizeof (size_t)) < (ssize_t) sizeof (size_t))
+        goto error;
+
+    if (lseek(fd, 0, SEEK_SET) == -1)
         goto error;
 
     struct bxfi_context *ctx = mmap(NULL,
-            sizeof (struct bxfi_context),
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED, fd, 0);
+            total_sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
     if (ctx == MAP_FAILED)
         goto error;
@@ -77,8 +120,6 @@ static int bxfi_map_local_ctx(struct bxfi_map *map, const char *name, int create
 
 error:;
     int err = errno;
-    if (create)
-        shm_unlink(name);
     if (fd != -1)
         close(fd);
     return -err;
@@ -86,7 +127,8 @@ error:;
 
 static int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int destroy)
 {
-    munmap(map->ctx, sizeof (struct bxfi_context));
+    size_t sz = map->ctx->total_sz;
+    munmap(map->ctx, sz);
     close(map->fd);
 
     if (destroy && shm_unlink(name) == -1)
@@ -103,40 +145,75 @@ static int bxfi_main(void)
     snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
 
     struct bxfi_map local_ctx;
-    if (bxfi_map_local_ctx(&local_ctx, map_name, 0) < 0)
+    if (bxfi_map_local_ctx(&local_ctx, map_name) < 0)
         abort();
 
-    bxf_fn *fn = bxfi_denormalize_fnaddr(local_ctx.ctx->fn);
+    struct bxfi_addr addr = {
+        .soname = (char *)(local_ctx.ctx + 1),
+        .addr   = local_ctx.ctx->fn,
+    };
+    bxf_fn *fn = bxfi_denormalize_fnaddr(&addr);
 
-    int rc = fn();
+    if (!fn)
+        abort();
 
+    local_ctx.ctx->ok = 1;
     bxfi_unmap_local_ctx(&local_ctx, map_name, 1);
-    return rc;
+
+    raise(SIGSTOP);
+
+    return fn();
 }
 
 __attribute__((constructor(65535)))
 static void patch_main(void)
 {
-    if (strcmp(__progname, "boxfort-worker"))
+    char map_name[sizeof ("bxfi_") + 21];
+    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
+
+    if (!bxfi_check_local_ctx(map_name))
         return;
 
     if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
         abort();
 }
 
-int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
+int get_exe_path(char *buf, size_t sz)
 {
     const char *self = "/proc/self/exe";
 
-    bxf_fn *fn = bxfi_normalize_fnaddr(params->fn);
+    /* We can't just use /proc/self/exe or equivalent to re-exec the
+       executable, because tools like valgrind use this path to open
+       and map the ELF file -- which would point to the valgrind binary. */
+    ssize_t rc = readlink(self, buf, sz);
+    if (rc == -1)
+        return -errno;
+    if ((size_t) rc == sz)
+        return -ENAMETOOLONG;
+    memset(buf + rc, 0, sz - rc);
+    return 0;
+}
+
+int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
+{
+    static char exe[PATH_MAX + 1];
+
+    int rc;
+    if (!exe[0] && (rc = get_exe_path(exe, sizeof (exe))) < 0)
+        return rc;
+
+    struct bxfi_addr addr;
+    if (bxfi_normalize_fnaddr(params->fn, &addr) < 0)
+        return -EINVAL;
 
     pid_t pid = fork();
     if (pid == -1) {
         return -errno;
     } else if (pid) {
         struct bxfi_sandbox *sandbox = malloc(sizeof (*sandbox));
+        char map_name[sizeof ("bxfi_") + 21];
+        int status, map_rc;
 
-        int status, rc;
         for (;;) {
             rc = waitpid(pid, &status, WUNTRACED);
             if (rc != -1 || errno != EINTR)
@@ -146,38 +223,56 @@ int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
             return -errno;
 
         if (!WIFSTOPPED(status))
-            return -EPROTO;
+            goto err;
 
         sandbox->props = (struct bxf_sandbox) {
             .pid = pid,
         };
 
-        char map_name[sizeof ("bxfi_") + 21];
         snprintf(map_name, sizeof (map_name), "bxfi_%d", pid);
 
+        size_t len = strlen(addr.soname);
+
         struct bxfi_map local_ctx;
-        rc = bxfi_map_local_ctx(&local_ctx, map_name, 1);
+        map_rc = bxfi_create_local_ctx(&local_ctx, map_name, len + 1);
 
-        if (rc < 0) {
-            kill(pid, SIGKILL);
-            waitpid(pid, NULL, 0);
-            return -EPROTO;
-        }
+        if (map_rc < 0)
+            goto err_kill;
 
-        local_ctx.ctx->fn = fn;
+        local_ctx.ctx->ok = 0;
+        local_ctx.ctx->fn = addr.addr;
+        memcpy(local_ctx.ctx + 1, addr.soname, len + 1);
+        local_ctx.ctx->fn_soname_sz = len + 1;
+
+        kill(pid, SIGCONT);
+        waitpid(pid, &status, WUNTRACED);
+
+        if (!WIFSTOPPED(status))
+            goto err;
+
+        if (!local_ctx.ctx->ok)
+            goto err_kill;
 
         kill(pid, SIGCONT);
         *ctx = &sandbox->props;
 
         bxfi_unmap_local_ctx(&local_ctx, map_name, 0);
         return 0;
+
+err_kill:
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+err:
+        if (!map_rc)
+            shm_unlink(map_name);
+        return -EPROTO;
     }
 
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
     raise(SIGSTOP);
 
-    execl(self, "boxfort-worker", NULL);
+    execl(exe, "boxfort-worker", NULL);
     _exit(errno);
 }
 
@@ -192,5 +287,13 @@ int bxf_wait(bxf_sandbox ctx, size_t timeout)
     int status;
     if (waitpid(ctx->pid, &status, 0) == -1)
         return -errno;
+
+    /* Enforce the deletion of the shm file */
+    if (!WIFSTOPPED(status)) {
+        char map_name[sizeof ("bxfi_") + 21];
+        snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
+
+        shm_unlink(map_name);
+    }
     return 0;
 }

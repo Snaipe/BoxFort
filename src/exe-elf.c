@@ -236,3 +236,46 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     mprotect(base, len, PROT_READ | PROT_EXEC);
     return 0;
 }
+
+bxfi_exe_lib bxfi_lib_from_addr(void *addr)
+{
+    bxfi_exe_ctx ctx = init_exe_ctx();
+
+    struct link_map *lo = ctx->r_map;
+    for (struct link_map *lm = lo; lm; lm = lm->l_next) {
+        if (addr >= (void *) lm->l_addr && lo->l_addr < lm->l_addr)
+            lo = lm;
+    }
+    return lo;
+}
+
+bxfi_exe_lib bxfi_lib_from_name(const char *name)
+{
+    bxfi_exe_ctx ctx = init_exe_ctx();
+    for (struct link_map *lm = ctx->r_map; lm; lm = lm->l_next) {
+        const char *lname = bxfi_lib_name(lm);
+        if (!strcmp(lname, name))
+            return lm;
+    }
+    return BXFI_INVALID_LIB;
+}
+
+const char *bxfi_lib_name(bxfi_exe_lib lib)
+{
+    bxfi_exe_ctx ctx = init_exe_ctx();
+
+    /* The name of the main shared object is the empty string,
+       we return something to be consistent with the eglibc weirdity */
+    if (lib == ctx->r_map)
+        return "self";
+
+    /* Somewhy, eglibc always set l_name to the empty string. */
+    if (lib->l_name[0])
+        return lib->l_name;
+    return lib_dt_lookup(lib, DT_SONAME);
+}
+
+size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
+{
+    return lib->l_addr;
+}
