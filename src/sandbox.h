@@ -11,8 +11,8 @@
 
 # include BXFI_OS_SANDBOX_H
 
-int bxfi_check_local_ctx(const char *name);
-int bxfi_map_local_ctx(struct bxfi_map *map, const char *name);
-int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int destroy);
+int bxfi_check_sandbox_ctx(void);
+int bxfi_init_sandbox_ctx(struct bxfi_map *map);
+int bxfi_term_sandbox_ctx(struct bxfi_map *map);
 
 #endif /* !SANDBOX_H_ */

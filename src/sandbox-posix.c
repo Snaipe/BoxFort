@@ -37,7 +37,6 @@
 
 #include "addr.h"
 #include "boxfort.h"
-#include "exe.h"
 #include "sandbox.h"
 
 struct bxfi_sandbox {
@@ -65,7 +64,7 @@ static int bxfi_create_local_ctx(struct bxfi_map *map,
 
     ctx->total_sz = sizeof (struct bxfi_context) + sz;
 
-    *map = (struct bxfi_map) { ctx, fd };
+    *map = (struct bxfi_map) { .ctx = ctx, .fd = fd };
     return 0;
 
 error:;
@@ -76,16 +75,29 @@ error:;
     return -err;
 }
 
-int bxfi_check_local_ctx(const char *name)
+static void bxfi_unmap_local_ctx(struct bxfi_map *map)
 {
+    size_t sz = map->ctx->total_sz;
+    munmap(map->ctx, sz);
+    close(map->fd);
+}
+
+int bxfi_check_sandbox_ctx(void)
+{
+    char name[sizeof ("bxfi_") + 21];
+    snprintf(name, sizeof (name), "bxfi_%d", getpid());
+
     int fd = shm_open(name, O_RDONLY, 0600);
     if (fd != -1)
         close(fd);
     return fd != -1;
 }
 
-int bxfi_map_local_ctx(struct bxfi_map *map, const char *name)
+int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
+    char name[sizeof ("bxfi_") + 21];
+    snprintf(name, sizeof (name), "bxfi_%d", getpid());
+
     int fd = shm_open(name, O_RDWR, 0600);
     if (fd == -1)
         goto error;
@@ -104,7 +116,8 @@ int bxfi_map_local_ctx(struct bxfi_map *map, const char *name)
     if (ctx == MAP_FAILED)
         goto error;
 
-    *map = (struct bxfi_map) { ctx, fd };
+    *map = (struct bxfi_map) { .ctx = ctx, .fd = fd };
+    memcpy(map->map_name, name, sizeof (name));
     return 0;
 
 error:;
@@ -114,15 +127,16 @@ error:;
     return -err;
 }
 
-int bxfi_unmap_local_ctx(struct bxfi_map *map, const char *name, int destroy)
+int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 {
-    size_t sz = map->ctx->total_sz;
-    munmap(map->ctx, sz);
-    close(map->fd);
+    map->ctx->ok = 1;
+    bxfi_unmap_local_ctx(map);
 
-    if (destroy && shm_unlink(name) == -1)
+    if (shm_unlink(map->map_name) == -1)
         return -errno;
 
+    /* Wait for the parent to finalize initialization */
+    raise(SIGSTOP);
     return 0;
 }
 
@@ -204,7 +218,7 @@ int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
         kill(pid, SIGCONT);
         *ctx = &sandbox->props;
 
-        bxfi_unmap_local_ctx(&local_ctx, map_name, 0);
+        bxfi_unmap_local_ctx(&local_ctx);
         return 0;
 
 err_kill:

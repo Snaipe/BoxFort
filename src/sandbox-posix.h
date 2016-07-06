@@ -11,6 +11,13 @@ struct bxfi_context {
 struct bxfi_map {
     struct bxfi_context *ctx;
     int fd;
+    char map_name[sizeof ("bxfi_") + 21];
 };
+
+# ifndef __GNUC__
+#  error Compiler not supported -- use a GNU C compiler.
+# endif
+
+# define BXFI_INITIALIZER(...) __attribute__((constructor))
 
 #endif /* !SANDBOX_POSIX_H_ */

@@ -21,11 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
-#include <signal.h>
-#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "addr.h"
 #include "exe.h"
@@ -33,11 +31,8 @@
 
 static int bxfi_main(void)
 {
-    char map_name[sizeof ("bxfi_") + 21];
-    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
-
     struct bxfi_map local_ctx;
-    if (bxfi_map_local_ctx(&local_ctx, map_name) < 0)
+    if (bxfi_init_sandbox_ctx(&local_ctx) < 0)
         abort();
 
     struct bxfi_addr addr = {
@@ -49,21 +44,16 @@ static int bxfi_main(void)
     if (!fn)
         abort();
 
-    local_ctx.ctx->ok = 1;
-    bxfi_unmap_local_ctx(&local_ctx, map_name, 1);
-
-    raise(SIGSTOP);
+    if (bxfi_term_sandbox_ctx(&local_ctx) < 0)
+        abort();
 
     return fn();
 }
 
-__attribute__((constructor))
+BXFI_INITIALIZER(patch_main)
 static void patch_main(void)
 {
-    char map_name[sizeof ("bxfi_") + 21];
-    snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
-
-    if (!bxfi_check_local_ctx(map_name))
+    if (!bxfi_check_sandbox_ctx())
         return;
 
     if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
