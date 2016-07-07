@@ -40,8 +40,15 @@
 #include "sandbox.h"
 
 struct bxfi_sandbox {
-    struct bxf_sandbox props;
+    struct bxf_instance props;
+
+    /* A sandbox is said to be mantled if there is an unique instance
+       managing its memory. */
+    int mantled;
 };
+
+#define bxfi_cont(Var, Type, Member) \
+    (Var ? ((Type*) (((char*) Var) - offsetof(Type, Member))) : NULL)
 
 static int bxfi_create_local_ctx(struct bxfi_map *map,
         const char *name, size_t sz)
@@ -156,38 +163,64 @@ static int get_exe_path(char *buf, size_t sz)
     return 0;
 }
 
-int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
+static pid_t wait_stop(pid_t pid)
+{
+    int status;
+    pid_t rc;
+
+    for (;;) {
+        rc = waitpid(pid, &status, WUNTRACED);
+        if (rc != -1 || errno != EINTR)
+            break;
+    }
+    if (rc == -1)
+        return -pid;
+
+    if (!WIFSTOPPED(status))
+        return 0;
+
+    return pid;
+}
+
+int bxf_run_impl(bxf_instance *ctx, bxf_run_params params)
 {
     static char exe[PATH_MAX + 1];
 
-    int rc;
-    if (!exe[0] && (rc = get_exe_path(exe, sizeof (exe))) < 0)
-        return rc;
+    char map_name[sizeof ("bxfi_") + 21];
+    struct bxf_sandbox *sandbox = NULL;
+    struct bxfi_sandbox *instance = NULL;
+    pid_t pid = 0;
+
+    int errnum, map_rc;
+    if (!exe[0] && (errnum = get_exe_path(exe, sizeof (exe))) < 0)
+        return errnum;
 
     struct bxfi_addr addr;
     if (bxfi_normalize_fnaddr(params->fn, &addr) < 0)
         return -EINVAL;
 
-    pid_t pid = fork();
+    errnum = -ENOMEM;
+
+    sandbox = malloc(sizeof (*sandbox));
+    if (!sandbox)
+        goto err;
+
+    instance = malloc(sizeof (*instance));
+    if (!instance)
+        goto err;
+    instance->mantled = 1;
+
+    pid = fork();
     if (pid == -1) {
-        return -errno;
+        errnum = -errno;
+        goto err;
     } else if (pid) {
-        struct bxfi_sandbox *sandbox = malloc(sizeof (*sandbox));
-        char map_name[sizeof ("bxfi_") + 21];
-        int status, map_rc;
 
-        for (;;) {
-            rc = waitpid(pid, &status, WUNTRACED);
-            if (rc != -1 || errno != EINTR)
-                break;
-        }
-        if (rc == -1)
-            return -errno;
-
-        if (!WIFSTOPPED(status))
+        if ((pid = wait_stop(pid)) <= 0)
             goto err;
 
-        sandbox->props = (struct bxf_sandbox) {
+        instance->props = (struct bxf_instance) {
+            .sandbox = sandbox,
             .pid = pid,
         };
 
@@ -199,7 +232,7 @@ int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
         map_rc = bxfi_create_local_ctx(&local_ctx, map_name, len + 1);
 
         if (map_rc < 0)
-            goto err_kill;
+            goto err;
 
         local_ctx.ctx->ok = 0;
         local_ctx.ctx->fn = addr.addr;
@@ -207,27 +240,17 @@ int bxf_run_impl(bxf_sandbox *ctx, bxf_run_params params)
         local_ctx.ctx->fn_soname_sz = len + 1;
 
         kill(pid, SIGCONT);
-        waitpid(pid, &status, WUNTRACED);
-
-        if (!WIFSTOPPED(status))
+        if ((pid = wait_stop(pid)) <= 0)
             goto err;
 
         if (!local_ctx.ctx->ok)
-            goto err_kill;
+            goto err;
 
         kill(pid, SIGCONT);
-        *ctx = &sandbox->props;
+        *ctx = &instance->props;
 
         bxfi_unmap_local_ctx(&local_ctx);
         return 0;
-
-err_kill:
-        kill(pid, SIGKILL);
-        waitpid(pid, NULL, 0);
-err:
-        if (!map_rc)
-            shm_unlink(map_name);
-        return -EPROTO;
     }
 
     prctl(PR_SET_PDEATHSIG, SIGKILL);
@@ -236,14 +259,29 @@ err:
 
     execl(exe, "boxfort-worker", NULL);
     _exit(errno);
+
+err:
+    if (pid) {
+        kill(pid, SIGKILL);
+        waitpid(pid, NULL, 0);
+    }
+
+    if (!map_rc)
+        shm_unlink(map_name);
+
+    return errnum;
 }
 
-bxf_sandbox bxf_getself(void)
+int bxf_term(bxf_instance instance)
 {
-    return NULL;
+    struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    if (sb->mantled)
+        free((void *) instance->sandbox);
+    free(sb);
+    return 0;
 }
 
-int bxf_wait(bxf_sandbox ctx, size_t timeout)
+int bxf_wait(bxf_instance ctx, size_t timeout)
 {
     (void) timeout;
     int status;
