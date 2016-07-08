@@ -34,14 +34,14 @@ struct bxf_sandbox {
     bxf_pid pid;
 };
 
-typedef const struct bxf_sandbox *bxf_sandbox;
+typedef const struct bxf_sandbox bxf_sandbox;
 
 struct bxf_instance {
-    bxf_sandbox sandbox;
+    bxf_sandbox *sandbox;
     bxf_pid pid;
 };
 
-typedef const struct bxf_instance *bxf_instance;
+typedef const struct bxf_instance bxf_instance;
 
 struct bxf_run_params {
     bxf_fn *fn;
@@ -50,11 +50,11 @@ struct bxf_run_params {
 
 typedef const struct bxf_run_params *bxf_run_params;
 
-bxf_instance bxf_start(bxf_sandbox sandbox);
-int bxf_term(bxf_instance instance);
-int bxf_wait(bxf_instance instance, size_t timeout);
+bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn);
+int bxf_term(bxf_instance *instance);
+int bxf_wait(bxf_instance *instance, size_t timeout);
 
-# define bxf_run(Ctx, ...) (bxf_run_impl((Ctx), &(struct bxf_run_params) { __VA_ARGS__ }))
-int bxf_run_impl(bxf_instance *instance, bxf_run_params params);
+# define bxf_run(...) (bxf_run_impl(&(struct bxf_run_params) { __VA_ARGS__ }))
+bxf_instance *bxf_run_impl(bxf_run_params params);
 
 #endif /* !BOXFORT_H_ */

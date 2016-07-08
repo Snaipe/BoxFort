@@ -182,28 +182,25 @@ static pid_t wait_stop(pid_t pid)
     return pid;
 }
 
-int bxf_run_impl(bxf_instance *ctx, bxf_run_params params)
+bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn)
 {
     static char exe[PATH_MAX + 1];
 
     char map_name[sizeof ("bxfi_") + 21];
-    struct bxf_sandbox *sandbox = NULL;
     struct bxfi_sandbox *instance = NULL;
     pid_t pid = 0;
 
-    int errnum, map_rc;
+    intptr_t errnum;
+    int map_rc;
+
     if (!exe[0] && (errnum = get_exe_path(exe, sizeof (exe))) < 0)
-        return errnum;
+        return (bxf_instance *) errnum;
 
     struct bxfi_addr addr;
-    if (bxfi_normalize_fnaddr(params->fn, &addr) < 0)
-        return -EINVAL;
+    if (bxfi_normalize_fnaddr(fn, &addr) < 0)
+        return (bxf_instance *) -EINVAL;
 
     errnum = -ENOMEM;
-
-    sandbox = malloc(sizeof (*sandbox));
-    if (!sandbox)
-        goto err;
 
     instance = malloc(sizeof (*instance));
     if (!instance)
@@ -247,10 +244,9 @@ int bxf_run_impl(bxf_instance *ctx, bxf_run_params params)
             goto err;
 
         kill(pid, SIGCONT);
-        *ctx = &instance->props;
 
         bxfi_unmap_local_ctx(&local_ctx);
-        return 0;
+        return &instance->props;
     }
 
     prctl(PR_SET_PDEATHSIG, SIGKILL);
@@ -269,10 +265,23 @@ err:
     if (!map_rc)
         shm_unlink(map_name);
 
-    return errnum;
+    return (bxf_instance *) errnum;
 }
 
-int bxf_term(bxf_instance instance)
+bxf_instance *bxf_run_impl(bxf_run_params params)
+{
+    struct bxf_sandbox *sandbox = malloc(sizeof (*sandbox));
+    if (!sandbox)
+        return (bxf_instance *) -ENOMEM;
+
+    bxf_instance *instance = bxf_start(sandbox, params->fn);
+    if ((intptr_t) instance < 0)
+        free(sandbox);
+
+    return instance;
+}
+
+int bxf_term(bxf_instance *instance)
 {
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     if (sb->mantled)
@@ -281,7 +290,7 @@ int bxf_term(bxf_instance instance)
     return 0;
 }
 
-int bxf_wait(bxf_instance ctx, size_t timeout)
+int bxf_wait(bxf_instance *ctx, size_t timeout)
 {
     (void) timeout;
     int status;
