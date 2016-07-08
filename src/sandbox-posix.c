@@ -32,6 +32,7 @@
 
 #include <sys/mman.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/wait.h>
 
@@ -182,6 +183,65 @@ static pid_t wait_stop(pid_t pid)
     return pid;
 }
 
+static int setup_limit(int limit, size_t iquota, size_t quota)
+{
+    if (!quota && !iquota)
+        return 0;
+
+    struct rlimit rl;
+    if (getrlimit(limit, &rl) < 0)
+        return -errno;
+
+    if (quota)
+        rl.rlim_max = quota;
+
+    if (iquota)
+        rl.rlim_cur = iquota;
+    else if (quota)
+        rl.rlim_cur = quota;
+
+    if (setrlimit(limit, &rl) < 0)
+        return -errno;
+    return 0;
+}
+
+#define setup_limit(Limit, Quota)   \
+        (setup_limit((Limit),       \
+            sandbox->iquotas.Quota, \
+            sandbox->quotas.Quota))
+
+static int setup_limits(bxf_sandbox *sandbox)
+{
+    int errnum;
+
+    errnum = setup_limit(RLIMIT_AS, memory);
+    if (errnum < 0)
+        return errnum;
+
+    errnum = setup_limit(RLIMIT_NOFILE, files);
+    if (errnum < 0)
+        return errnum;
+
+    errnum = setup_limit(RLIMIT_NPROC, subprocesses);
+    if (errnum < 0)
+        return errnum;
+
+    return 0;
+}
+
+static int setup_inheritance(bxf_sandbox *sandbox)
+{
+    if (!sandbox->inherit.files) {
+        struct rlimit rl;
+        if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
+            return -errno;
+        for (int fd = 3; fd < (int) rl.rlim_cur; ++fd)
+            close(fd);
+    }
+    return 0;
+}
+
+
 bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn)
 {
     static char exe[PATH_MAX + 1];
@@ -251,6 +311,12 @@ bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn)
 
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
+    if (setup_limits(sandbox) < 0)
+        abort();
+
+    if (setup_inheritance(sandbox) < 0)
+        abort();
+
     raise(SIGSTOP);
 
     execl(exe, "boxfort-worker", NULL);
@@ -270,9 +336,16 @@ err:
 
 bxf_instance *bxf_run_impl(bxf_run_params params)
 {
-    struct bxf_sandbox *sandbox = malloc(sizeof (*sandbox));
+    if (!params->fn)
+        return (bxf_instance *) -EINVAL;
+
+    struct bxf_sandbox *sandbox = calloc(1, sizeof (*sandbox));
     if (!sandbox)
         return (bxf_instance *) -ENOMEM;
+
+    sandbox->quotas  = params->quotas;
+    sandbox->iquotas = params->iquotas;
+    sandbox->inherit = params->inherit;
 
     bxf_instance *instance = bxf_start(sandbox, params->fn);
     if ((intptr_t) instance < 0)

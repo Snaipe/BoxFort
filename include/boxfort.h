@@ -30,8 +30,24 @@ typedef unsigned long long bxf_pid;
 typedef int (bxf_fn)(void);
 typedef void (bxf_callback)(void);
 
+struct bxf_quotas {
+    size_t memory;
+    size_t subprocesses;
+    size_t files;
+};
+
+struct bxf_inheritance {
+    int files   : 1;
+    int data    : 1;
+};
+
+# define BXFI_SANDBOX_FIELDS        \
+    struct bxf_quotas quotas;       \
+    struct bxf_quotas iquotas;      \
+    struct bxf_inheritance inherit;
+
 struct bxf_sandbox {
-    bxf_pid pid;
+    BXFI_SANDBOX_FIELDS
 };
 
 typedef const struct bxf_sandbox bxf_sandbox;
@@ -46,6 +62,7 @@ typedef const struct bxf_instance bxf_instance;
 struct bxf_run_params {
     bxf_fn *fn;
     bxf_callback *callback;
+    BXFI_SANDBOX_FIELDS
 };
 
 typedef const struct bxf_run_params *bxf_run_params;
