@@ -28,7 +28,6 @@
 
 typedef unsigned long long bxf_pid;
 typedef int (bxf_fn)(void);
-typedef void (bxf_callback)(void);
 
 struct bxf_quotas {
     size_t memory;
@@ -59,15 +58,26 @@ struct bxf_instance {
 
 typedef const struct bxf_instance bxf_instance;
 
+typedef int (bxf_preexec)(bxf_instance *);
+
 struct bxf_run_params {
     bxf_fn *fn;
-    bxf_callback *callback;
+    bxf_preexec *preexec;
     BXFI_SANDBOX_FIELDS
 };
 
 typedef const struct bxf_run_params *bxf_run_params;
 
-bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn);
+struct bxf_start_params {
+    bxf_fn *fn;
+    bxf_preexec *preexec;
+};
+
+typedef const struct bxf_start_params *bxf_start_params;
+
+# define bxf_start(Sandbox, ...) (bxf_start_impl((Sandbox), &(struct bxf_start_params) { __VA_ARGS__ }))
+bxf_instance *bxf_start_impl(bxf_sandbox *sandbox, bxf_start_params params);
+
 int bxf_term(bxf_instance *instance);
 int bxf_wait(bxf_instance *instance, size_t timeout);
 

@@ -241,8 +241,7 @@ static int setup_inheritance(bxf_sandbox *sandbox)
     return 0;
 }
 
-
-bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn)
+static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec)
 {
     static char exe[PATH_MAX + 1];
 
@@ -311,6 +310,14 @@ bxf_instance *bxf_start(bxf_sandbox *sandbox, bxf_fn *fn)
 
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 
+    instance->props = (struct bxf_instance) {
+        .sandbox = sandbox,
+        .pid = getpid(),
+    };
+
+    if (preexec && preexec(&instance->props) < 0)
+        abort();
+
     if (setup_limits(sandbox) < 0)
         abort();
 
@@ -334,6 +341,11 @@ err:
     return (bxf_instance *) errnum;
 }
 
+bxf_instance *bxf_start_impl(bxf_sandbox *sandbox, bxf_start_params params)
+{
+    return exec(sandbox, params->fn, params->preexec);
+}
+
 bxf_instance *bxf_run_impl(bxf_run_params params)
 {
     if (!params->fn)
@@ -347,7 +359,7 @@ bxf_instance *bxf_run_impl(bxf_run_params params)
     sandbox->iquotas = params->iquotas;
     sandbox->inherit = params->inherit;
 
-    bxf_instance *instance = bxf_start(sandbox, params->fn);
+    bxf_instance *instance = exec(sandbox, params->fn, params->preexec);
     if ((intptr_t) instance < 0)
         free(sandbox);
 
