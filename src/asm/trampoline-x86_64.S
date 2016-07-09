@@ -28,6 +28,8 @@ MANGLE(bxfi_trampoline):
     jmp *addr_data(%rip)
 
 .align 8
+.globl MANGLE(bxfi_trampoline_addr)
+MANGLE(bxfi_trampoline_addr):
 addr_data:
 .fill 8, 1, 0
 

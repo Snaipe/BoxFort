@@ -209,6 +209,7 @@ static void *get_main_addr(bxfi_exe_ctx ctx)
 }
 
 extern void *bxfi_trampoline;
+extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
 #define PAGE_SIZE 4096
@@ -223,9 +224,12 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     char opcodes[(uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline];
     memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
 
+    uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr
+                         - (uintptr_t)&bxfi_trampoline;
+
     /* The trampoline code is a jump followed by an aligned pointer value --
        after copying the jmp opcode, we write this pointer value. */
-    *(uintptr_t *)(&opcodes[BXF_BITS / 8]) = (uintptr_t)new_main;
+    *(uintptr_t *)(&opcodes[jmp_offset]) = (uintptr_t)new_main;
 
     void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;

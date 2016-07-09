@@ -60,7 +60,8 @@ static int bxfi_create_local_ctx(struct bxfi_map *map,
     if (fd == -1)
         goto error;
 
-    ftruncate(fd, sizeof (struct bxfi_context) + sz);
+    if (ftruncate(fd, sizeof (struct bxfi_context) + sz) == -1)
+        goto error;
 
     struct bxfi_context *ctx = mmap(NULL,
             sizeof (struct bxfi_context) + sz,
@@ -250,7 +251,7 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
     pid_t pid = 0;
 
     intptr_t errnum;
-    int map_rc;
+    int map_rc = -1;
 
     if (!exe[0] && (errnum = get_exe_path(exe, sizeof (exe))) < 0)
         return (bxf_instance *) errnum;

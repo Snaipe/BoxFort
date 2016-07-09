@@ -25,9 +25,14 @@
 
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
-    jmp *addr_data(%eip)
+    call next
+next:
+    pop %eax
+    jmp *addr_data(%eax)
 
 .align 4
+.globl MANGLE(bxfi_trampoline_addr)
+MANGLE(bxfi_trampoline_addr):
 addr_data:
 .fill 4, 1, 0
 
