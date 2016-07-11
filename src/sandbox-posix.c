@@ -120,12 +120,14 @@ int bxfi_init_sandbox_ctx(struct bxfi_map *map)
         goto error;
 
     size_t total_sz;
+    size_t *sz = mmap(NULL,
+            sizeof (total_sz), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-    if (read(fd, &total_sz, sizeof (size_t)) < (ssize_t) sizeof (size_t))
+    if (sz == MAP_FAILED)
         goto error;
 
-    if (lseek(fd, 0, SEEK_SET) == -1)
-        goto error;
+    total_sz = *sz;
+    munmap(sz, sizeof (total_sz));
 
     struct bxfi_context *ctx = mmap(NULL,
             total_sz, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
@@ -181,10 +183,13 @@ static int get_exe_path(char *buf, size_t sz)
 #elif defined __OpenBSD__ || defined __DragonFly__
     const char *self = "/proc/curproc/file";
 #elif defined (__APPLE__)
-    char self[PATH_MAX];
-    uint32_t size = sizeof (self);
-    if (_NSGetExecutablePath(self, &size) == -1)
-        return -1;
+    uint32_t size = sz;
+    if (_NSGetExecutablePath(buf, &size) == -1)
+        return -ENAMETOOLONG;
+    /* _NSGetExecutablePath already returns the correct path */
+    char *self;
+    (void) self;
+    return 0;
 #else
 # error Platform not supported
 #endif
@@ -193,8 +198,13 @@ static int get_exe_path(char *buf, size_t sz)
        executable, because tools like valgrind use this path to open
        and map the ELF file -- which would point to the valgrind binary. */
     ssize_t rc = readlink(self, buf, sz);
-    if (rc == -1)
+    if (rc == -1) {
+        if (errno == EINVAL) {
+            strncpy(buf, self, sz);
+            return 0;
+        }
         return -errno;
+    }
     if ((size_t) rc == sz)
         return -ENAMETOOLONG;
     memset(buf + rc, 0, sz - rc);
@@ -214,8 +224,10 @@ static pid_t wait_stop(pid_t pid)
     if (rc == -1)
         return -pid;
 
-    if (!WIFSTOPPED(status))
+    if (!WIFSTOPPED(status)) {
+        errno = EPROTO;
         return 0;
+    }
 
     return pid;
 }
@@ -309,8 +321,10 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
         goto err;
     } else if (pid) {
 
-        if ((pid = wait_stop(pid)) <= 0)
+        if ((pid = wait_stop(pid)) <= 0) {
+            errnum = -errno;
             goto err;
+        }
 
         instance->props = (struct bxf_instance) {
             .sandbox = sandbox,
@@ -333,8 +347,10 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
         local_ctx.ctx->fn_soname_sz = len + 1;
 
         kill(pid, SIGCONT);
-        if ((pid = wait_stop(pid)) <= 0)
+        if ((pid = wait_stop(pid)) <= 0) {
+            errnum = -errno;
             goto err;
+        }
 
         if (!local_ctx.ctx->ok)
             goto err;

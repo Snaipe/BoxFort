@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <dlfcn.h>
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
@@ -55,11 +56,9 @@ static inline void *ptr_add(const void *ptr, size_t off)
     return (char *) ptr + off;
 }
 
-extern int main(void);
-
 void *get_main_addr(void)
 {
-    return nonstd (void *) main;
+    return dlsym(RTLD_DEFAULT, "main");
 }
 
 extern void *bxfi_trampoline;
