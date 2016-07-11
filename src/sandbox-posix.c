@@ -31,7 +31,6 @@
 #include <unistd.h>
 
 #include <sys/mman.h>
-#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/wait.h>
@@ -39,6 +38,14 @@
 #include "addr.h"
 #include "boxfort.h"
 #include "sandbox.h"
+
+#if defined (HAVE_PR_SET_PDEATHSIG)
+# include <sys/prctl.h>
+#endif
+
+#if defined (__APPLE__)
+# include <mach-o/dyld.h>
+#endif
 
 struct bxfi_sandbox {
     struct bxf_instance props;
@@ -151,7 +158,35 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 
 static int get_exe_path(char *buf, size_t sz)
 {
+#if defined(__linux__)
     const char *self = "/proc/self/exe";
+#elif defined __NetBSD__
+    const char *self = "/proc/curproc/exe";
+#elif defined __FreeBSD__
+    const char *self = "/proc/curproc/file";
+
+    int fd = open(self, O_RDONLY);
+    /* Fallback */
+    char path[PATH_MAX];
+    if (fd == -1 && errno == ENOENT) {
+        int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+        char path[PATH_MAX];
+        size_t cb = sizeof (path);
+        sysctl(mib, sizeof (mib) / sizeof (int), path, &cb, NULL, 0);
+        self = path;
+    }
+    if (fd != -1)
+        close(fd);
+#elif defined __OpenBSD__ || defined __DragonFly__
+    const char *self = "/proc/curproc/file";
+#elif defined (__APPLE__)
+    char self[PATH_MAX];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) == -1)
+        return -1;
+#else
+# error Platform not supported
+#endif
 
     /* We can't just use /proc/self/exe or equivalent to re-exec the
        executable, because tools like valgrind use this path to open
@@ -309,7 +344,9 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
         return &instance->props;
     }
 
+#if defined (HAVE_PR_SET_PDEATHSIG)
     prctl(PR_SET_PDEATHSIG, SIGKILL);
+#endif
 
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,

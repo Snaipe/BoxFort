@@ -112,6 +112,8 @@ if (BXF_EXE_FMT_ELF)
   mmk_check_type_exists(Elf${BXF_BITS}_Auxinfo elf.h HAVE_ELF_AUXINFO)
 endif ()
 
+check_symbol_exists(PR_SET_PDEATHSIG sys/prctl.h HAVE_PR_SET_PDEATHSIG)
+
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
 include_directories(include src)

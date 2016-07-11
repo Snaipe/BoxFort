@@ -46,5 +46,6 @@
 #cmakedefine HAVE__DYNAMIC @HAVE__DYNAMIC@
 #cmakedefine HAVE_ELF_AUXV_T @HAVE_ELF_AUXV_T@
 #cmakedefine HAVE_ELF_AUXINFO @HAVE_ELF_AUXINFO@
+#cmakedefine HAVE_PR_SET_PDEATHSIG @HAVE_PR_SET_PDEATHSIG@
 
 #endif /* !CONFIG_H_IN_ */
