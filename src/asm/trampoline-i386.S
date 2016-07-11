@@ -38,4 +38,3 @@ addr_data:
 
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):
-    nop
