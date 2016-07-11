@@ -28,7 +28,7 @@ MANGLE(bxfi_trampoline):
     call next
 next:
     pop %eax
-    jmp *addr_data(%eax)
+    jmp *(addr_data - next)(%eax)
 
 .align 4
 .globl MANGLE(bxfi_trampoline_addr)
