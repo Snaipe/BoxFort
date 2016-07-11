@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <stddef.h>
+#include <stdint.h>
 #include <errno.h>
 
 #include "addr.h"

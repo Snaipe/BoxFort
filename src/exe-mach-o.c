@@ -97,9 +97,9 @@ bxfi_exe_lib bxfi_lib_from_addr(void *addr)
 {
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
-    size_t nb_images = _dyld_image_count();
+    bxfi_exe_lib nb_images = _dyld_image_count();
     for (bxfi_exe_lib i = 0; i < nb_images; ++i) {
-        const mach_hdr *hdr = _dyld_get_image_header(i);
+        const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(i);
         intptr_t slide = bxfi_exe_get_vmslide(i);
 
         const struct load_command *lc = ptr_add(hdr, sizeof (mach_hdr));
@@ -124,7 +124,7 @@ bxfi_exe_lib bxfi_lib_from_name(const char *name)
 
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
-    size_t nb_images = _dyld_image_count();
+    bxfi_exe_lib nb_images = _dyld_image_count();
     for (bxfi_exe_lib i = 1; i < nb_images; ++i) {
         const char *img_name = _dyld_get_image_name(i);
         if (img_name && !strcmp(img_name, name))

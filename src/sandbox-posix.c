@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -181,8 +182,8 @@ static int get_exe_path(char *buf, size_t sz)
     const char *self = "/proc/curproc/file";
 #elif defined (__APPLE__)
     char self[PATH_MAX];
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) == -1)
+    uint32_t size = sizeof (self);
+    if (_NSGetExecutablePath(self, &size) == -1)
         return -1;
 #else
 # error Platform not supported
