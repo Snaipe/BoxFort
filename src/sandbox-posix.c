@@ -290,7 +290,7 @@ static int setup_inheritance(bxf_sandbox *sandbox)
     return 0;
 }
 
-static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec)
+int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec)
 {
     static char exe[PATH_MAX + 1];
 
@@ -302,11 +302,11 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
     int map_rc = -1;
 
     if (!exe[0] && (errnum = get_exe_path(exe, sizeof (exe))) < 0)
-        return (bxf_instance *) errnum;
+        return errnum;
 
     struct bxfi_addr addr;
     if (bxfi_normalize_fnaddr(fn, &addr) < 0)
-        return (bxf_instance *) -EINVAL;
+        return -EINVAL;
 
     errnum = -ENOMEM;
 
@@ -358,7 +358,8 @@ static bxf_instance *exec(bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec
         kill(pid, SIGCONT);
 
         bxfi_unmap_local_ctx(&local_ctx);
-        return &instance->props;
+        *out = &instance->props;
+        return 0;
     }
 
 #if defined (HAVE_PR_SET_PDEATHSIG)
@@ -393,51 +394,7 @@ err:
     if (!map_rc)
         shm_unlink(map_name);
 
-    return (bxf_instance *) errnum;
-}
-
-int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox, bxf_start_params params)
-{
-    bxf_instance *instance = exec(sandbox, params->fn, params->preexec);
-    if ((intptr_t) instance < 0)
-        return (intptr_t) instance;
-    *out = instance;
-    return 0;
-}
-
-int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
-{
-    if (!params->fn)
-        return -EINVAL;
-
-    struct bxf_sandbox *sandbox = calloc(1, sizeof (*sandbox));
-    if (!sandbox)
-        return -ENOMEM;
-
-    sandbox->quotas  = params->quotas;
-    sandbox->iquotas = params->iquotas;
-    sandbox->inherit = params->inherit;
-
-    bxf_instance *instance = exec(sandbox, params->fn, params->preexec);
-    if ((intptr_t) instance < 0) {
-        free(sandbox);
-        return (intptr_t) instance;
-    }
-
-    *out = instance;
-    return 0;
-}
-
-int bxf_run_impl(bxf_spawn_params params)
-{
-    bxf_instance *box;
-    int rc;
-    if ((rc = bxf_spawn_impl(&box, params)))
-        return rc;
-
-    rc = bxf_wait(box, 0);
-    bxf_term(box);
-    return rc;
+    return errnum;
 }
 
 int bxf_term(bxf_instance *instance)

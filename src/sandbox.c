@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,4 +59,40 @@ static void patch_main(void)
 
     if (bxfi_exe_patch_main((bxfi_exe_fn *) bxfi_main) < 0)
         abort();
+}
+
+int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
+{
+    if (!params->fn)
+        return -EINVAL;
+
+    struct bxf_sandbox *sandbox = calloc(1, sizeof (*sandbox));
+    if (!sandbox)
+        return -ENOMEM;
+
+    sandbox->quotas  = params->quotas;
+    sandbox->iquotas = params->iquotas;
+    sandbox->inherit = params->inherit;
+
+    int rc;
+    if ((rc = bxfi_exec(out, sandbox, params->fn, params->preexec)))
+        free(sandbox);
+    return rc;
+}
+
+int bxf_run_impl(bxf_spawn_params params)
+{
+    bxf_instance *box;
+    int rc;
+    if ((rc = bxf_spawn_impl(&box, params)))
+        return rc;
+
+    rc = bxf_wait(box, 0);
+    bxf_term(box);
+    return rc;
+}
+
+int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox, bxf_start_params params)
+{
+    return bxfi_exec(out, sandbox, params->fn, params->preexec);
 }
