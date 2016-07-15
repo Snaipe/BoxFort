@@ -13,18 +13,12 @@ int test2(void) {
 int test(void) {
     printf("I am a worker!\n");
 
-    bxf_instance *box;
-    assert(!bxf_run(&box, test2));
-    assert(!bxf_wait(box, 0));
-    assert(!bxf_term(box));
+    assert(!bxf_run(test2));
     return 0;
 }
 
 int main(void)
 {
-    bxf_instance *box;
-    assert(!bxf_run(&box, test));
-    assert(!bxf_wait(box, 0));
-    assert(!bxf_term(box));
+    assert(!bxf_run(test));
     return 0;
 }
