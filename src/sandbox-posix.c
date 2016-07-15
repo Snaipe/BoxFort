@@ -396,29 +396,36 @@ err:
     return (bxf_instance *) errnum;
 }
 
-bxf_instance *bxf_start_impl(bxf_sandbox *sandbox, bxf_start_params params)
+int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox, bxf_start_params params)
 {
-    return exec(sandbox, params->fn, params->preexec);
+    bxf_instance *instance = exec(sandbox, params->fn, params->preexec);
+    if ((intptr_t) instance < 0)
+        return (intptr_t) instance;
+    *out = instance;
+    return 0;
 }
 
-bxf_instance *bxf_run_impl(bxf_run_params params)
+int bxf_run_impl(bxf_instance **out, bxf_run_params params)
 {
     if (!params->fn)
-        return (bxf_instance *) -EINVAL;
+        return -EINVAL;
 
     struct bxf_sandbox *sandbox = calloc(1, sizeof (*sandbox));
     if (!sandbox)
-        return (bxf_instance *) -ENOMEM;
+        return -ENOMEM;
 
     sandbox->quotas  = params->quotas;
     sandbox->iquotas = params->iquotas;
     sandbox->inherit = params->inherit;
 
     bxf_instance *instance = exec(sandbox, params->fn, params->preexec);
-    if ((intptr_t) instance < 0)
+    if ((intptr_t) instance < 0) {
         free(sandbox);
+        return (intptr_t) instance;
+    }
 
-    return instance;
+    *out = instance;
+    return 0;
 }
 
 int bxf_term(bxf_instance *instance)

@@ -7,6 +7,7 @@ cmake_minimum_required (VERSION 2.8)
 project (BoxFort C)
 
 include (CheckSymbolExists)
+include (CheckLibraryExists)
 
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
@@ -94,7 +95,7 @@ string (TOUPPER "${BXF_EXE_FORMAT}" _EXE_SUFFIX)
 string (REGEX REPLACE "[^A-Z0-9_]" "_" _EXE_SUFFIX "${_EXE_SUFFIX}")
 set ("BXF_EXE_FMT_${_EXE_SUFFIX}" 1)
 
-function (mmk_check_type_exists _T _H _VAR)
+function (bxf_check_type_exists _T _H _VAR)
   include (CheckCSourceCompiles)
   check_c_source_compiles ("
     #include <${_H}>
@@ -109,11 +110,12 @@ if (BXF_EXE_FMT_ELF)
   check_symbol_exists(_r_debug link.h HAVE__R_DEBUG)
   check_symbol_exists(_DYNAMIC link.h HAVE__DYNAMIC)
 
-  mmk_check_type_exists(Elf${BXF_BITS}_auxv_t elf.h HAVE_ELF_AUXV_T)
-  mmk_check_type_exists(Elf${BXF_BITS}_Auxinfo elf.h HAVE_ELF_AUXINFO)
+  bxf_check_type_exists(Elf${BXF_BITS}_auxv_t elf.h HAVE_ELF_AUXV_T)
+  bxf_check_type_exists(Elf${BXF_BITS}_Auxinfo elf.h HAVE_ELF_AUXINFO)
 endif ()
 
 check_symbol_exists(PR_SET_PDEATHSIG sys/prctl.h HAVE_PR_SET_PDEATHSIG)
+check_library_exists(rt shm_open "sys/mman.h" HAVE_SHM)
 
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
@@ -121,6 +123,10 @@ include_directories(include src)
 add_subdirectory (src)
 
 add_library (boxfort SHARED ${SOURCE_FILES})
+
+if (HAVE_SHM)
+    target_link_libraries(boxfort rt)
+endif ()
 
 add_custom_target(boxfort_tests ALL)
 

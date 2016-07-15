@@ -61,6 +61,7 @@ typedef const struct bxf_instance bxf_instance;
 typedef int (bxf_preexec)(bxf_instance *);
 
 struct bxf_run_params {
+    int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
     BXFI_SANDBOX_FIELDS
@@ -69,19 +70,24 @@ struct bxf_run_params {
 typedef const struct bxf_run_params *bxf_run_params;
 
 struct bxf_start_params {
+    int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
 };
 
 typedef const struct bxf_start_params *bxf_start_params;
 
-# define bxf_start(Sandbox, ...) (bxf_start_impl((Sandbox), &(struct bxf_start_params) { __VA_ARGS__ }))
-bxf_instance *bxf_start_impl(bxf_sandbox *sandbox, bxf_start_params params);
+# define bxf_start(Instance, Sandbox, ...) (bxf_start_impl((Instance), \
+            (Sandbox), \
+            &(struct bxf_start_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
+int bxf_start_impl(bxf_instance **instance,
+        bxf_sandbox *sandbox, bxf_start_params params);
 
 int bxf_term(bxf_instance *instance);
 int bxf_wait(bxf_instance *instance, size_t timeout);
 
-# define bxf_run(...) (bxf_run_impl(&(struct bxf_run_params) { __VA_ARGS__ }))
-bxf_instance *bxf_run_impl(bxf_run_params params);
+# define bxf_run(Instance, ...) (bxf_run_impl((Instance), \
+            &(struct bxf_run_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
+int bxf_run_impl(bxf_instance **instance, bxf_run_params params);
 
 #endif /* !BOXFORT_H_ */
