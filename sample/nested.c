@@ -5,20 +5,22 @@
 
 #include "boxfort.h"
 
-int test2(void) {
+int second(void)
+{
     printf("I am a nested worker!\n");
     return 0;
 }
 
-int test(void) {
+int first(void)
+{
     printf("I am a worker!\n");
 
-    assert(!bxf_run(test2));
+    assert(!bxf_run(second));
     return 0;
 }
 
 int main(void)
 {
-    assert(!bxf_run(test));
+    assert(!bxf_run(first));
     return 0;
 }
