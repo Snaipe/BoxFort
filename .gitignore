@@ -3,6 +3,8 @@
 
 !src/*.c
 !src/*.h
+!sample/*.c
+!test/*.t
 !.cmake/
 !CMakeLists.txt
 !*.rst

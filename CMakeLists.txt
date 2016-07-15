@@ -154,6 +154,6 @@ function (add_boxfort_test _NAME)
 endfunction ()
 
 enable_testing ()
-#add_subdirectory (test)
-#add_subdirectory (sample)
+add_subdirectory (test)
+add_subdirectory (sample)
 
