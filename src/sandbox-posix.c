@@ -56,9 +56,6 @@ struct bxfi_sandbox {
     int mantled;
 };
 
-#define bxfi_cont(Var, Type, Member) \
-    (Var ? ((Type*) (((char*) Var) - offsetof(Type, Member))) : NULL)
-
 static int bxfi_create_local_ctx(struct bxfi_map *map,
         const char *name, size_t sz)
 {
