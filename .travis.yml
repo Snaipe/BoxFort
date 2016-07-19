@@ -58,6 +58,19 @@ matrix:
 before_install:
   - if [ -z "${TARGET}" ]; then export TARGET=${ARCH}; fi
   - if [ -n "${SUDO_PKG}" ]; then sudo apt-get install -qq ${SUDO_PKG}; fi
+  - |
+      if [ "${TESTS:-ON}" = "ON" ]; then
+        if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+          brew install python3
+          export PATH="$(python3 -m site --user-base)/bin:$PATH"
+          export PYTHON_BIN="python3"
+        else
+          curl -L https://bootstrap.pypa.io/get-pip.py | python3.5 - --user
+          export PYTHON_BIN="python3.5"
+        fi
+
+        pip3 install --user cram==0.7
+      fi
 
 script:
   - mkdir -p build && cd $_
