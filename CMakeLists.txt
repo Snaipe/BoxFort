@@ -21,6 +21,8 @@ else ()
     set (_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 endif ()
 
+set (CMAKE_C_FLAGS_DEFAULT "${CMAKE_C_FLAGS}")
+
 set (BXF_MANGLING "none")
 
 if (MSVC)
