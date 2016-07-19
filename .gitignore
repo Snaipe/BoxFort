@@ -5,7 +5,7 @@
 !src/*.h
 !sample/*.c
 !test/*.t
-!.cmake/
+!.cmake/*/*.cmake
 !CMakeLists.txt
 !*.rst
 !*.md
