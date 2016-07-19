@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "boxfort.h"
+
+#define _assert(Cond) do { if (!(Cond)) abort(); } while (0)
 
 int second(void)
 {
@@ -15,12 +17,12 @@ int first(void)
 {
     printf("I am a worker!\n");
 
-    assert(!bxf_run(second));
+    _assert(!bxf_run(second));
     return 0;
 }
 
 int main(void)
 {
-    assert(!bxf_run(first));
+    _assert(!bxf_run(first));
     return 0;
 }
