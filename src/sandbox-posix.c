@@ -287,7 +287,8 @@ static int setup_inheritance(bxf_sandbox *sandbox)
     return 0;
 }
 
-int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec *preexec)
+int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
+        int mantled, bxf_fn *fn, bxf_preexec *preexec)
 {
     static char exe[PATH_MAX + 1];
 
@@ -310,7 +311,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox, bxf_fn *fn, bxf_preexec 
     instance = malloc(sizeof (*instance));
     if (!instance)
         goto err;
-    instance->mantled = 1;
+    instance->mantled = mantled;
 
     pid = fork();
     if (pid == -1) {
