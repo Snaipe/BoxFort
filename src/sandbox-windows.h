@@ -21,41 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SANDBOX_H_
-# define SANDBOX_H_
+#ifndef SANDBOX_WINDOWS_H_
+# define SANDBOX_WINDOWS_H_
 
-# include "boxfort.h"
-# include "config.h"
+# include <windows.h>
 
-# define BXFI_OS_SANDBOX_STR_(x) #x
-# define BXFI_OS_SANDBOX_STR(x) BXFI_OS_SANDBOX_STR_(x)
+struct bxfi_context {
+    size_t total_sz;
+    void *fn;
+    size_t fn_soname_sz;
+    HANDLE sync;
+};
 
-# define BXFI_OS_SANDBOX_H_ sandbox-BXF_OS_FAMILY.h
-# define BXFI_OS_SANDBOX_H BXFI_OS_SANDBOX_STR(BXFI_OS_SANDBOX_H_)
+struct bxfi_map {
+    struct bxfi_context *ctx;
+    HANDLE handle;
+    TCHAR map_name[sizeof ("bxfi_") + 21];
+};
 
-# include BXFI_OS_SANDBOX_H
-
-int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec);
-int bxfi_check_sandbox_ctx(void);
-int bxfi_init_sandbox_ctx(struct bxfi_map *map);
-int bxfi_term_sandbox_ctx(struct bxfi_map *map);
-
-# if defined(_MSC_VER)
-#  define BXFI_INITIALIZER_(Fn, Prefix) \
-        static void Fn(void); \
-        __pragma(section(".CRT$XCU",read) \
-        __declspec(allocate(".CRT$XCU")) void (*Fn ## _init)(void) = Fn; \
-        __pragma(comment(linker,"/include:" Prefix #Fn "_init"))
-#  ifdef _WIN64
-#   define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn,"")
-#  else
-#   define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn,"_")
-#  endif
-# elif defined (__GNUC__)
-#  define BXFI_INITIALIZER(...) __attribute__((constructor))
-# else
-#  error Compiler not supported
-# endif
-
-#endif /* !SANDBOX_H_ */
+#endif /* !SANDBOX_WINDOWS_H_ */
