@@ -24,6 +24,7 @@
 #ifndef SANDBOX_H_
 # define SANDBOX_H_
 
+# include "boxfort.h"
 # include "config.h"
 
 # define BXFI_OS_SANDBOX_STR_(x) #x

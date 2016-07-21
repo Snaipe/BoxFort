@@ -294,6 +294,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     char map_name[sizeof ("bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
+    struct bxfi_map local_ctx = { 0 };
     pid_t pid = 0;
 
     intptr_t errnum;
@@ -333,8 +334,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         size_t len = strlen(addr.soname);
 
-        struct bxfi_map local_ctx;
         map_rc = bxfi_create_local_ctx(&local_ctx, map_name, len + 1);
+        errnum = map_rc;
 
         if (map_rc < 0)
             goto err;
@@ -389,8 +390,10 @@ err:
         waitpid(pid, NULL, 0);
     }
 
-    if (!map_rc)
+    if (!map_rc) {
+        bxfi_unmap_local_ctx(&local_ctx);
         shm_unlink(map_name);
+    }
 
     return errnum;
 }
