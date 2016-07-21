@@ -19,7 +19,7 @@ set (SOURCE_FILES ${ASM_FILES}
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/config.h"
+  "${CMAKE_CURRENT_BINARY_DIR}/config.h"
 )
 
 set (SOURCE_FILES ${SOURCE_FILES} PARENT_SCOPE)
