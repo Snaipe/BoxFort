@@ -121,7 +121,7 @@ check_library_exists(rt shm_open "sys/mman.h" HAVE_SHM)
 
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
-include_directories(include src ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(include src ${CMAKE_CURRENT_BINARY_DIR}/src)
 add_subdirectory (src)
 
 add_library (boxfort SHARED ${SOURCE_FILES})
