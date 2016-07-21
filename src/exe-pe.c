@@ -72,7 +72,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     size_t len = align2_up(offset + sizeof (opcodes), PAGE_SIZE);
 
     DWORD old;
-    VirtualProtect(base, len, PAGE_READWRITE, &old);
+    VirtualProtect(base, len, PAGE_EXECUTE_READWRITE, &old);
     memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
     VirtualProtect(base, len, old, NULL);
     return 0;

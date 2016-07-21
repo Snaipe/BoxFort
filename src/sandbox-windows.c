@@ -41,20 +41,20 @@ struct bxfi_sandbox {
 
 int bxfi_check_sandbox_ctx(void)
 {
-    TCHAR name[sizeof ("bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("bxfi_%lu"), GetCurrentProcessId());
+    TCHAR name[sizeof ("Local\\bxfi_") + 21];
+    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), GetCurrentProcessId());
 
     HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
     if (!shm)
-        return 1;
+        return 0;
     CloseHandle(shm);
-    return 0;
+    return 1;
 }
 
 static int bxfi_create_local_ctx(struct bxfi_map *map, bxf_pid pid, size_t sz)
 {
-    TCHAR name[sizeof ("bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("bxfi_%lu"), pid);
+    TCHAR name[sizeof ("Local\\bxfi_") + 21];
+    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), pid);
 
     HANDLE shm = CreateFileMapping(INVALID_HANDLE_VALUE, NULL,
             PAGE_READWRITE, 0, sz, name);
@@ -75,8 +75,8 @@ static int bxfi_create_local_ctx(struct bxfi_map *map, bxf_pid pid, size_t sz)
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    TCHAR name[sizeof ("bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("bxfi_%lu"), GetCurrentProcessId());
+    TCHAR name[sizeof ("Local\\bxfi_") + 21];
+    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), GetCurrentProcessId());
 
     HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
     if (!shm)
@@ -111,11 +111,19 @@ error:
     return -errno;
 }
 
-int bxfi_term_sandbox_ctx(struct bxfi_map *map)
+int bxfi_unmap_local_ctx(struct bxfi_map *map)
 {
     UnmapViewOfFile(map->ctx);
     CloseHandle(map->handle);
     return 0;
+}
+
+int bxfi_term_sandbox_ctx(struct bxfi_map *map)
+{
+    HANDLE sync = map->ctx->sync;
+    int rc = bxfi_unmap_local_ctx(map);
+    SetEvent(sync);
+    return rc;
 }
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
@@ -197,7 +205,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     CloseHandle(info.hThread);
     CloseHandle(sync);
 
-    bxfi_term_sandbox_ctx(&map);
+    bxfi_unmap_local_ctx(&map);
     *out = &instance->props;
     return 0;
 
