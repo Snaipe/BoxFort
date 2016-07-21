@@ -1,5 +1,9 @@
 # BoxFort
 
+[![Unix Build Status](https://api.travis-ci.org/Snaipe/BoxFort.svg?branch=master)](https://travis-ci.org/Snaipe/BoxFort) 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/Snaipe/BoxFort/blob/master/LICENSE) 
+[![Version](https://img.shields.io/badge/version-experimental-orange.svg?style=flat)](https://github.com/Snaipe/BoxFort/releases) 
+
 A simple, cross-platform sandboxing C library powering [Criterion][criterion].
 
 **Warning**: This library is experimental. APIs may change without notice until Beta is hit. Use at your own risk.
