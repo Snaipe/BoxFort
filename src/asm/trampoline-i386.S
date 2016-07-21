@@ -30,7 +30,12 @@ next:
     pop %eax
     jmp *(addr_data - next)(%eax)
 
+#ifdef BXF_EXE_FMT_MACH_O
+.align 2
+#else
 .align 4
+#endif
+
 .globl MANGLE(bxfi_trampoline_addr)
 MANGLE(bxfi_trampoline_addr):
 addr_data:

@@ -27,7 +27,12 @@
 MANGLE(bxfi_trampoline):
     jmp *addr_data(%rip)
 
+#ifdef BXF_EXE_FMT_MACH_O
+.align 3
+#else
 .align 8
+#endif
+
 .globl MANGLE(bxfi_trampoline_addr)
 MANGLE(bxfi_trampoline_addr):
 addr_data:
