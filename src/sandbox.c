@@ -87,7 +87,7 @@ int bxf_run_impl(bxf_spawn_params params)
     if ((rc = bxf_spawn_impl(&box, params)))
         return rc;
 
-    rc = bxf_wait(box, 0);
+    rc = bxf_wait(box, BXF_FOREVER);
     bxf_term(box);
     return rc;
 }

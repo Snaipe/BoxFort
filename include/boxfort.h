@@ -75,6 +75,8 @@ struct bxf_start_params {
     bxf_preexec *preexec;
 };
 
+# define BXF_FOREVER ((size_t)-1)
+
 typedef const struct bxf_start_params *bxf_start_params;
 
 # define bxf_start(Instance, Sandbox, ...) (bxf_start_impl((Instance), \
