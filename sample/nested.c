@@ -7,6 +7,12 @@
 
 #define _assert(Cond) do { if (!(Cond)) abort(); } while (0)
 
+#ifdef _WIN32
+# define EXPORT __declspec(dllexport)
+#else
+# define EXPORT
+#endif
+
 int second(void)
 {
     printf("I am a nested worker!\n");
@@ -21,7 +27,7 @@ int first(void)
     return 0;
 }
 
-int main(void)
+EXPORT int main(void)
 {
     _assert(!bxf_run(first));
     return 0;
