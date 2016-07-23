@@ -63,6 +63,7 @@ struct bxfi_sandbox {
 };
 
 static struct bxfi_sandbox *sb_alive;
+static struct bxfi_sandbox *sb_dead;
 static pthread_mutex_t sandbox_sync = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t sandbox_cond;
 
@@ -79,15 +80,21 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
         }
         prev = &s->next;
     }
-    pthread_mutex_unlock(&sandbox_sync);
-    if (!s)
+    if (!s) {
+        pthread_mutex_unlock(&sandbox_sync);
         return NULL;
+    }
+
+    s->next = sb_dead;
+    sb_dead = s;
+    pthread_mutex_unlock(&sandbox_sync);
 
     int status;
     pid_t rc = waitpid(pid, &status, WNOHANG | WUNTRACED);
     if (rc != pid)
         return NULL;
 
+    pthread_mutex_lock(&s->sync);
     if (WIFEXITED(status))
         s->props.status.exit = WEXITSTATUS(status);
     if (WIFSIGNALED(status))
@@ -95,10 +102,12 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
     s->props.status.stopped = WIFSTOPPED(status);
     s->props.status.alive = WIFSTOPPED(status);
     pthread_cond_broadcast(&s->cond);
+    pthread_mutex_unlock(&s->sync);
 
     pthread_mutex_lock(&sandbox_sync);
     if (!sb_alive) {
         pthread_cond_destroy(&sandbox_cond);
+        pthread_mutex_unlock(&sandbox_sync);
         pthread_exit(NULL);
     }
     pthread_mutex_unlock(&sandbox_sync);
@@ -109,7 +118,6 @@ static pthread_t child_pump;
 
 static void *child_pump_fn(void *nil)
 {
-    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
     int wflags = WEXITED | WSTOPPED | WNOWAIT;
     for (;;) {
         pthread_mutex_lock(&sandbox_sync);
@@ -127,7 +135,6 @@ static void *child_pump_fn(void *nil)
         if (rc)
             continue;
 
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         for (;;) {
             memset(&infop, 0, sizeof (infop));
             if (waitid(P_ALL, 0, &infop, wflags | WNOHANG) == -1)
@@ -138,7 +145,6 @@ static void *child_pump_fn(void *nil)
             if (instance && instance->callback)
                 instance->callback(&instance->props);
         }
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
     return nil;
 }
@@ -374,10 +380,70 @@ static int setup_inheritance(bxf_sandbox *sandbox)
     return 0;
 }
 
+static void prefork(void)
+{
+    pthread_mutex_lock(&sandbox_sync);
+    for (struct bxfi_sandbox *s = sb_alive; s; s = s->next)
+        pthread_mutex_lock(&s->sync);
+    for (struct bxfi_sandbox *s = sb_dead; s; s = s->next)
+        pthread_mutex_lock(&s->sync);
+}
+
+static void postfork_parent(void)
+{
+    for (struct bxfi_sandbox *s = sb_dead; s; s = s->next)
+        pthread_mutex_unlock(&s->sync);
+    for (struct bxfi_sandbox *s = sb_alive; s; s = s->next)
+        pthread_mutex_unlock(&s->sync);
+    pthread_mutex_unlock(&sandbox_sync);
+}
+
+static void postfork_child(void)
+{
+    postfork_parent();
+
+    if (sb_alive) {
+        pthread_cond_init(&sandbox_cond, NULL);
+        pthread_cond_destroy(&sandbox_cond);
+        pthread_join(child_pump, NULL);
+    }
+
+    for (struct bxfi_sandbox *s = sb_alive; s; s = s->next) {
+        memset((void*)&s->props.status, 0, sizeof (s->props.status));
+        s->next = sb_dead;
+        sb_dead = s;
+    }
+
+    sb_alive = NULL;
+    sb_dead = NULL;
+}
+
+static void init_atfork(void)
+{
+    pthread_atfork(prefork, postfork_parent, postfork_child);
+}
+
+static void init_child_pump(pid_t pid)
+{
+    pthread_cond_init(&sandbox_cond, NULL);
+    if (pthread_create(&child_pump, NULL, child_pump_fn, NULL))
+        goto thread_err;
+    return;
+
+thread_err:
+    perror("boxfort: could not initialize child pump");
+    kill(pid, SIGKILL);
+    waitpid(pid, NULL, 0);
+    abort();
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
 {
     static char exe[PATH_MAX + 1];
+    static pthread_once_t atfork = PTHREAD_ONCE_INIT;
+
+    pthread_once(&atfork, init_atfork);
 
     char map_name[sizeof ("bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
@@ -451,15 +517,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         pthread_mutex_lock(&sandbox_sync);
         /* spawn a wait thread if no sandboxes are alive right now */
-        if (!sb_alive) {
-            pthread_cond_init(&sandbox_cond, NULL);
-            if (pthread_create(&child_pump, NULL, child_pump_fn, NULL)) {
-                perror("boxfort: could not initialize child pump");
-                kill(pid, SIGKILL);
-                waitpid(pid, NULL, 0);
-                abort();
-            }
-        }
+        if (!sb_alive)
+            init_child_pump(pid);
 
         instance->next = sb_alive;
         sb_alive = instance;
@@ -517,9 +576,20 @@ int bxf_term(bxf_instance *instance)
         return -EINVAL;
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    struct bxfi_sandbox **prev = &sb_dead;
+
+    pthread_mutex_lock(&sandbox_sync);
+    for (struct bxfi_sandbox *s = sb_dead; s; s = s->next) {
+        if (s == sb) {
+            *prev = s->next;
+            break;
+        }
+        prev = &s->next;
+    }
+    pthread_mutex_unlock(&sandbox_sync);
+
     if (sb->mantled)
         free((void *) instance->sandbox);
-
     pthread_mutex_destroy(&sb->sync);
     pthread_cond_destroy(&sb->cond);
     free(sb);
@@ -528,6 +598,9 @@ int bxf_term(bxf_instance *instance)
 
 int bxf_wait(bxf_instance *instance, size_t timeout)
 {
+    if (!instance->status.alive)
+        return 0;
+
     struct timespec timeo = {
         .tv_sec = timeout / 1000000000,
         .tv_nsec = timeout % 1000000000
@@ -538,6 +611,11 @@ int bxf_wait(bxf_instance *instance, size_t timeout)
     while (instance->status.alive && !instance->status.stopped)
         pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
     pthread_mutex_unlock(&sb->sync);
+
+    pthread_mutex_lock(&sandbox_sync);
+    if (!sb_alive)
+        pthread_join(child_pump, NULL);
+    pthread_mutex_unlock(&sandbox_sync);
 
     /* Enforce the deletion of the shm file */
     if (!instance->status.alive) {

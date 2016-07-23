@@ -130,6 +130,17 @@ if (HAVE_SHM)
     target_link_libraries(boxfort rt)
 endif ()
 
+find_package(Threads REQUIRED)
+
+if (THREADS_HAVE_PTHREAD_ARG)
+  set_property(TARGET boxfort PROPERTY COMPILE_OPTIONS "-pthread")
+  set_property(TARGET boxfort PROPERTY INTERFACE_COMPILE_OPTIONS "-pthread")
+endif ()
+
+if (CMAKE_THREAD_LIBS_INIT)
+  target_link_libraries(boxfort "${CMAKE_THREAD_LIBS_INIT}")
+endif ()
+
 add_custom_target(boxfort_tests ALL)
 
 function (add_boxfort_sample _NAME)
