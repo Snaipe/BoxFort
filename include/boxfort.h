@@ -58,6 +58,8 @@ struct bxf_instance {
     volatile struct {
         int signal;
         int exit;
+        int alive;
+        int stopped;
     } status;
 };
 

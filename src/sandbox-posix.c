@@ -56,6 +56,8 @@ struct bxfi_sandbox {
        managing its memory. */
     int mantled;
 
+    pthread_mutex_t sync;
+    pthread_cond_t cond;
     bxf_callback *callback;
     struct bxfi_sandbox *next;
 };
@@ -73,7 +75,7 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
         return NULL;
 
     int status;
-    pid_t rc = waitpid(pid, &status, WNOHANG);
+    pid_t rc = waitpid(pid, &status, WNOHANG | WUNTRACED);
     if (rc != pid)
         return NULL;
 
@@ -81,6 +83,9 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
         s->props.status.exit = WEXITSTATUS(status);
     if (WIFSIGNALED(status))
         s->props.status.signal = WTERMSIG(status);
+    s->props.status.stopped = WIFSTOPPED(status);
+    s->props.status.alive = WIFSTOPPED(status);
+    pthread_cond_broadcast(&s->cond);
     return s;
 }
 
@@ -89,11 +94,12 @@ static pthread_t child_pump;
 static void *child_pump_fn(void *nil)
 {
     pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    int wflags = WEXITED | WSTOPPED | WNOWAIT;
     for (;;) {
         siginfo_t infop = {0};
         int rc;
         for (;;) {
-            rc = waitid(P_ALL, 0, &infop, WEXITED | WNOWAIT);
+            rc = waitid(P_ALL, 0, &infop, wflags);
             if (rc != -1 || errno == EINTR)
                 break;
         }
@@ -103,7 +109,7 @@ static void *child_pump_fn(void *nil)
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
         for (;;) {
             memset(&infop, 0, sizeof (infop));
-            if (waitid(P_ALL, 0, &infop, WEXITED | WNOHANG | WNOWAIT) == -1)
+            if (waitid(P_ALL, 0, &infop, wflags | WNOHANG) == -1)
                 break;
             if (!infop.si_pid)
                 break;
@@ -383,6 +389,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         .mantled = mantled,
         .callback = callback,
     };
+    if ((errnum = -pthread_mutex_init(&instance->sync, NULL)))
+        goto err;
+    if ((errnum = -pthread_cond_init(&instance->cond, NULL)))
+        goto err;
 
     pid = fork();
     if (pid == -1) {
@@ -398,6 +408,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         instance->props = (struct bxf_instance) {
             .sandbox = sandbox,
             .pid = pid,
+            .status.alive = 1,
         };
 
         snprintf(map_name, sizeof (map_name), "bxfi_%d", pid);
@@ -438,6 +449,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 #if defined (HAVE_PR_SET_PDEATHSIG)
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 #endif
+
+    pthread_detach(child_pump);
 
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,
@@ -495,17 +508,23 @@ int bxf_term(bxf_instance *instance)
     return 0;
 }
 
-int bxf_wait(bxf_instance *ctx, size_t timeout)
+int bxf_wait(bxf_instance *instance, size_t timeout)
 {
-    (void) timeout;
-    int status;
-    if (waitpid(ctx->pid, &status, 0) == -1)
-        return -errno;
+    struct timespec timeo = {
+        .tv_sec = timeout / 1000000000,
+        .tv_nsec = timeout % 1000000000
+    };
+
+    struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    pthread_mutex_lock(&sb->sync);
+    while (instance->status.alive && !instance->status.stopped)
+        pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
+    pthread_mutex_unlock(&sb->sync);
 
     /* Enforce the deletion of the shm file */
-    if (!WIFSTOPPED(status)) {
+    if (!instance->status.alive) {
         char map_name[sizeof ("bxfi_") + 21];
-        snprintf(map_name, sizeof (map_name), "bxfi_%d", (int) ctx->pid);
+        snprintf(map_name, sizeof (map_name), "bxfi_%d", (int) instance->pid);
 
         shm_unlink(map_name);
     }
