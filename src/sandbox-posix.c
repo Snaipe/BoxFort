@@ -104,13 +104,6 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
     pthread_cond_broadcast(&s->cond);
     pthread_mutex_unlock(&s->sync);
 
-    pthread_mutex_lock(&sandbox_sync);
-    if (!sb_alive) {
-        pthread_cond_destroy(&sandbox_cond);
-        pthread_mutex_unlock(&sandbox_sync);
-        pthread_exit(NULL);
-    }
-    pthread_mutex_unlock(&sandbox_sync);
     return s;
 }
 
@@ -142,8 +135,18 @@ static void *child_pump_fn(void *nil)
             if (!infop.si_pid)
                 break;
             struct bxfi_sandbox *instance = reap_child(infop.si_pid);
-            if (instance && instance->callback)
+            if (!instance)
+                continue;
+            if (!instance->props.status.alive && instance->callback)
                 instance->callback(&instance->props);
+
+            pthread_mutex_lock(&sandbox_sync);
+            if (!sb_alive) {
+                pthread_cond_destroy(&sandbox_cond);
+                pthread_mutex_unlock(&sandbox_sync);
+                return nil;
+            }
+            pthread_mutex_unlock(&sandbox_sync);
         }
     }
     return nil;
