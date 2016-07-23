@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +55,66 @@ struct bxfi_sandbox {
     /* A sandbox is said to be mantled if there is an unique instance
        managing its memory. */
     int mantled;
+
+    bxf_callback *callback;
+    struct bxfi_sandbox *next;
 };
+
+static struct bxfi_sandbox *sandboxes;
+
+static struct bxfi_sandbox *reap_child(pid_t pid)
+{
+    struct bxfi_sandbox *s;
+    for (s = sandboxes; s; s = s->next) {
+        if (s->props.pid == (bxf_pid) pid)
+            break;
+    }
+    if (!s)
+        return NULL;
+
+    int status;
+    pid_t rc = waitpid(pid, &status, WNOHANG);
+    if (rc != pid)
+        return NULL;
+
+    if (WIFEXITED(status))
+        s->props.status.exit = WEXITSTATUS(status);
+    if (WIFSIGNALED(status))
+        s->props.status.signal = WTERMSIG(status);
+    return s;
+}
+
+static pthread_t child_pump;
+
+static void *child_pump_fn(void *nil)
+{
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    for (;;) {
+        siginfo_t infop = {0};
+        int rc;
+        for (;;) {
+            rc = waitid(P_ALL, 0, &infop, WEXITED | WNOWAIT);
+            if (rc != -1 || errno == EINTR)
+                break;
+        }
+        if (rc)
+            continue;
+
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+        for (;;) {
+            memset(&infop, 0, sizeof (infop));
+            if (waitid(P_ALL, 0, &infop, WEXITED | WNOHANG | WNOWAIT) == -1)
+                break;
+            if (!infop.si_pid)
+                break;
+            struct bxfi_sandbox *instance = reap_child(infop.si_pid);
+            if (instance && instance->callback)
+                instance->callback(&instance->props);
+        }
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    }
+    return nil;
+}
 
 static int bxfi_create_local_ctx(struct bxfi_map *map,
         const char *name, size_t sz)
@@ -288,9 +348,16 @@ static int setup_inheritance(bxf_sandbox *sandbox)
 }
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec)
+        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
 {
     static char exe[PATH_MAX + 1];
+
+    if (!sandboxes) {
+        if (pthread_create(&child_pump, NULL, child_pump_fn, NULL)) {
+            perror("boxfort: could not initialize child pump");
+            abort();
+        }
+    }
 
     char map_name[sizeof ("bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
@@ -312,7 +379,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     instance = malloc(sizeof (*instance));
     if (!instance)
         goto err;
-    instance->mantled = mantled;
+    *instance = (struct bxfi_sandbox) {
+        .mantled = mantled,
+        .callback = callback,
+    };
 
     pid = fork();
     if (pid == -1) {
@@ -357,6 +427,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         kill(pid, SIGCONT);
 
         bxfi_unmap_local_ctx(&local_ctx);
+
+        instance->next = sandboxes;
+        sandboxes = instance;
+
         *out = &instance->props;
         return 0;
     }
@@ -403,6 +477,20 @@ int bxf_term(bxf_instance *instance)
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     if (sb->mantled)
         free((void *) instance->sandbox);
+    struct bxfi_sandbox **prev = &sandboxes;
+    for (struct bxfi_sandbox *s = sandboxes; s; s = s->next) {
+        if (s == sb) {
+            *prev = s->next;
+            break;
+        }
+        prev = &s->next;
+    }
+
+    if (!sandboxes) {
+        pthread_cancel(child_pump);
+        pthread_join(child_pump, NULL);
+    }
+
     free(sb);
     return 0;
 }
@@ -417,7 +505,7 @@ int bxf_wait(bxf_instance *ctx, size_t timeout)
     /* Enforce the deletion of the shm file */
     if (!WIFSTOPPED(status)) {
         char map_name[sizeof ("bxfi_") + 21];
-        snprintf(map_name, sizeof (map_name), "bxfi_%d", getpid());
+        snprintf(map_name, sizeof (map_name), "bxfi_%d", (int) ctx->pid);
 
         shm_unlink(map_name);
     }

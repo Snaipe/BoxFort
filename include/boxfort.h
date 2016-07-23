@@ -54,16 +54,23 @@ typedef const struct bxf_sandbox bxf_sandbox;
 struct bxf_instance {
     bxf_sandbox *sandbox;
     bxf_pid pid;
+
+    volatile struct {
+        int signal;
+        int exit;
+    } status;
 };
 
 typedef const struct bxf_instance bxf_instance;
 
+typedef void (bxf_callback)(bxf_instance *);
 typedef int (bxf_preexec)(bxf_instance *);
 
 struct bxf_spawn_params {
     int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
+    bxf_callback *callback;
     BXFI_SANDBOX_FIELDS
 };
 
@@ -73,6 +80,7 @@ struct bxf_start_params {
     int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
+    bxf_callback *callback;
 };
 
 # define BXF_FOREVER ((size_t)-1)

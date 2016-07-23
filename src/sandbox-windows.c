@@ -25,6 +25,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <tchar.h>
 
 #include "addr.h"
@@ -126,8 +127,108 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     return rc;
 }
 
+struct callback_ctx {
+    HANDLE whandle;
+    bxf_callback *callback;
+    struct bxfi_sandbox *instance;
+};
+
+# ifndef STATUS_BAD_STACK
+#  define STATUS_BAD_STACK 0xC0000028L
+# endif
+
+/*
+ *  NTSTATUS specification, from ntstatus.h:
+ *
+ *  > Values are 32 bit values laid out as follows:
+ *  >
+ *  >  3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *  >  1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *  > +---+-+-+-----------------------+-------------------------------+
+ *  > |Sev|C|R|     Facility          |               Code            |
+ *  > +---+-+-+-----------------------+-------------------------------+
+ *  >
+ *  > where
+ *  >
+ *  >     Sev - is the severity code
+ *  >
+ *  >         00 - Success
+ *  >         01 - Informational
+ *  >         10 - Warning
+ *  >         11 - Error
+ *  >
+ *  >     C - is the Customer code flag
+ *  >
+ *  >     R - is a reserved bit
+ *  >
+ *  >     Facility - is the facility code
+ *  >
+ *  >     Code - is the facility's status code
+ *
+ *  We consider that all exit codes with error severity bits that cannot
+ *  be directly translated to translate to SIGSYS.
+ *
+ */
+static void get_status(HANDLE handle, struct bxf_instance *instance)
+{
+    DWORD exit_code;
+    GetExitCodeProcess(handle, &exit_code);
+    unsigned int sig = 0;
+    switch (exit_code) {
+        case STATUS_FLOAT_DENORMAL_OPERAND:
+        case STATUS_FLOAT_DIVIDE_BY_ZERO:
+        case STATUS_FLOAT_INEXACT_RESULT:
+        case STATUS_FLOAT_INVALID_OPERATION:
+        case STATUS_FLOAT_OVERFLOW:
+        case STATUS_FLOAT_STACK_CHECK:
+        case STATUS_FLOAT_UNDERFLOW:
+        case STATUS_INTEGER_DIVIDE_BY_ZERO:
+        case STATUS_INTEGER_OVERFLOW:           sig = SIGFPE; break;
+
+        case STATUS_ILLEGAL_INSTRUCTION:
+        case STATUS_PRIVILEGED_INSTRUCTION:
+        case STATUS_NONCONTINUABLE_EXCEPTION:   sig = SIGILL; break;
+
+        case STATUS_ACCESS_VIOLATION:
+        case STATUS_DATATYPE_MISALIGNMENT:
+        case STATUS_ARRAY_BOUNDS_EXCEEDED:
+        case STATUS_GUARD_PAGE_VIOLATION:
+        case STATUS_IN_PAGE_ERROR:
+        case STATUS_NO_MEMORY:
+        case STATUS_INVALID_DISPOSITION:
+        case STATUS_BAD_STACK:
+        case STATUS_STACK_OVERFLOW:             sig = SIGSEGV; break;
+
+        case STATUS_CONTROL_C_EXIT:             sig = SIGINT; break;
+
+        default: break;
+    }
+    if (!sig && exit_code & 0xC0000000)
+        sig = SIGABRT;
+    instance->status.signal = sig;
+    instance->status.exit = exit_code;
+}
+
+static void CALLBACK handle_child_terminated(PVOID lpParameter,
+        BOOLEAN TimerOrWaitFired)
+{
+    (void) TimerOrWaitFired;
+    struct callback_ctx *ctx = lpParameter;
+    struct bxfi_sandbox *instance = ctx->instance;
+    bxf_callback *callback = ctx->callback;
+
+    get_status(instance->proc, &instance->props);
+
+    HANDLE whandle = ctx->whandle;
+    free(lpParameter);
+    UnregisterWaitEx(whandle, NULL);
+
+    if (callback)
+        callback(&instance->props);
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec)
+        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
 {
     int errnum = 0;
     struct bxfi_sandbox *instance = NULL;
@@ -205,6 +306,20 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     CloseHandle(info.hThread);
     CloseHandle(sync);
 
+    struct callback_ctx *wctx = malloc(sizeof (*wctx));
+    *wctx = (struct callback_ctx) {
+        .instance = instance,
+        .callback = callback,
+    };
+
+    RegisterWaitForSingleObject(
+            &wctx->whandle,
+            info.hProcess,
+            handle_child_terminated,
+            wctx,
+            INFINITE,
+            WT_EXECUTELONGFUNCTION | WT_EXECUTEONLYONCE);
+
     bxfi_unmap_local_ctx(&map);
     *out = &instance->props;
     return 0;
@@ -241,5 +356,6 @@ int bxf_wait(bxf_instance *instance, size_t timeout)
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     if (WaitForSingleObject(sb->proc, dwtimeout) != WAIT_OBJECT_0)
         return -ECHILD;
+    get_status(sb->proc, &sb->props);
     return 0;
 }

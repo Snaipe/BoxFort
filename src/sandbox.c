@@ -75,7 +75,8 @@ int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
     sandbox->inherit = params->inherit;
 
     int rc;
-    if ((rc = bxfi_exec(out, sandbox, 1, params->fn, params->preexec)))
+    if ((rc = bxfi_exec(out, sandbox, 1, params->fn,
+            params->preexec, params->callback)))
         free(sandbox);
     return rc;
 }
@@ -92,7 +93,9 @@ int bxf_run_impl(bxf_spawn_params params)
     return rc;
 }
 
-int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox, bxf_start_params params)
+int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox,
+        bxf_start_params params)
 {
-    return bxfi_exec(out, sandbox, 0, params->fn, params->preexec);
+    return bxfi_exec(out, sandbox, 0, params->fn,
+            params->preexec, params->callback);
 }

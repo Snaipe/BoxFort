@@ -36,7 +36,7 @@
 # include BXFI_OS_SANDBOX_H
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec);
+        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback);
 int bxfi_check_sandbox_ctx(void);
 int bxfi_init_sandbox_ctx(struct bxfi_map *map);
 int bxfi_term_sandbox_ctx(struct bxfi_map *map);

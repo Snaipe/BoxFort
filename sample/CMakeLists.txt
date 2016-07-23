@@ -4,7 +4,10 @@ endif ()
 
 include_directories(../include)
 
-set(SAMPLES nested.c)
+set(SAMPLES
+    nested.c
+    callback.c
+)
 
 add_custom_target(boxfort_samples)
 add_dependencies(boxfort_tests boxfort_samples)
