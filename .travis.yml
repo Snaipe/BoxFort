@@ -101,7 +101,5 @@ script:
       ${CMAKE_OPTS}
       ..
   - TERM=dumb cmake --build . -- -j4
-  - |
-      if [ "${TESTS:-ON}" = "ON" ]; then
-        ctest --output-on-failure --timeout=10
-      fi
+  - >
+      [ "${TESTS:-ON}" = "ON" ] && ctest --output-on-failure --timeout=10
