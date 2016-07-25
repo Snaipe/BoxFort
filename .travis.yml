@@ -30,15 +30,10 @@ matrix:
     # x86_64
     - env: CONFIGURATION=Debug
       compiler: gcc
-    - env: CONFIGURATION=Release
-      compiler: gcc
     - env: CONFIGURATION=RelWithDebInfo
       compiler: gcc
     # i386
     - env: [CONFIGURATION=Debug, *i386-env]
-      addons: *i386-packages
-      compiler: gcc
-    - env: [CONFIGURATION=Release, *i386-env]
       addons: *i386-packages
       compiler: gcc
     - env: [CONFIGURATION=RelWithDebInfo, *i386-env]
@@ -49,16 +44,10 @@ matrix:
     - env: CONFIGURATION=Debug
       os: osx
       compiler: clang
-    - env: CONFIGURATION=Release
-      os: osx
-      compiler: clang
     - env: CONFIGURATION=RelWithDebInfo
       os: osx
       compiler: clang
     - env: [CONFIGURATION=Debug, *i386-darwin-env]
-      os: osx
-      compiler: clang
-    - env: [CONFIGURATION=Release, *i386-darwin-env]
       os: osx
       compiler: clang
     - env: [CONFIGURATION=RelWithDebInfo, *i386-darwin-env]
