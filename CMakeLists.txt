@@ -118,6 +118,23 @@ endif ()
 
 check_symbol_exists(PR_SET_PDEATHSIG sys/prctl.h HAVE_PR_SET_PDEATHSIG)
 check_library_exists(rt shm_open "sys/mman.h" HAVE_SHM)
+if (HAVE_SHM AND NOT HAVE_LIBRT)
+  set (HAVE_LIBRT 1)
+endif ()
+
+check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME)
+if (HAVE_CLOCK_GETTIME AND NOT HAVE_LIBRT)
+  set (HAVE_LIBRT 1)
+endif ()
+
+if (NOT HAVE_CLOCK_GETTIME)
+  check_symbol_exists(clock_gettime "time.h" HAVE_CLOCK_GETTIME)
+endif ()
+
+check_symbol_exists(gettimeofday "sys/time.h" HAVE_GETTIMEOFDAY)
+
+check_library_exists(pthread pthread_cond_timedwait_relative_np
+  "pthread.h" HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
 
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
@@ -126,8 +143,8 @@ add_subdirectory (src)
 
 add_library (boxfort SHARED ${SOURCE_FILES})
 
-if (HAVE_SHM)
-    target_link_libraries(boxfort rt)
+if (HAVE_LIBRT)
+  target_link_libraries(boxfort rt)
 endif ()
 
 find_package(Threads REQUIRED)

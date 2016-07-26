@@ -37,6 +37,12 @@
 #include <sys/signal.h>
 #include <sys/wait.h>
 
+#if defined(HAVE_CLOCK_GETTIME)
+# include <time.h>
+#elif defined(HAVE_GETTIMEOFDAY)
+# include <sys/time.h>
+#endif
+
 #include "addr.h"
 #include "boxfort.h"
 #include "sandbox.h"
@@ -618,25 +624,62 @@ int bxf_term(bxf_instance *instance)
     return 0;
 }
 
-int bxf_wait(bxf_instance *instance, size_t timeout)
+int bxf_wait(bxf_instance *instance, double timeout)
 {
     if (!instance->status.alive)
         return 0;
 
-    struct timespec timeo = {
-        .tv_sec = timeout / 1000000000,
-        .tv_nsec = timeout % 1000000000
-    };
+    if (timeout < 0)
+        timeout = 0;
+
+    static const size_t nanosecs = 1000000000;
+
+    size_t to_ns = (timeout - trunc(timeout)) * nanosecs;
+    size_t to_s  = timeout;
+
+    struct timespec timeo;
+
+#if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
+    timeo = (struct timespec) { .tv_sec = to_ns, .tv_nsec = to_s };
+
+    typedef int (*const f_timedwait)(pthread_cond_t *cond,
+           pthread_mutex_t *mutex,
+           const struct timespec *abstime);
+
+    static f_timedwait pthread_cond_timedwait 
+        = pthread_cond_timedwait_relative_np;
+#elif defined(HAVE_CLOCK_GETTIME)
+    clock_gettime(CLOCK_REALTIME, &timeo);
+    size_t new_nsec = (timeo.tv_nsec + to_ns) % nanosecs;
+    timeo.tv_sec += to_s + (timeo.tv_nsec + to_ns) / nanosecs;
+    timeo.tv_nsec = new_nsec;
+#elif defined(HAVE_GETTIMEOFDAY)
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    timeo = (struct timespec) {
+        .tv_sec  = tv.tv_sec + to_s + (tv.tv_usec * 1000 + to_ns) / nanosecs,
+        .tv_nsec = (tv.tv_usec * 1000 + to_ns) % nanosecs,
+    }
+#else
+# error bxf_wait needs a way to get the current time.
+#endif
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     pthread_mutex_lock(&sb->sync);
+    int rc = 0;
     while (instance->status.alive && !instance->status.stopped) {
-        if (timeout != BXF_FOREVER)
-            pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
+        if (timeout == BXF_FOREVER || !isfinite(timeout))
+            rc = pthread_cond_wait(&sb->cond, &sb->sync);
         else
-            pthread_cond_wait(&sb->cond, &sb->sync);
+            rc = pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
+        if (rc == ETIMEDOUT)
+            break;
     }
     pthread_mutex_unlock(&sb->sync);
+
+    if (rc)
+        return -rc;
 
     pthread_mutex_lock(&self.sync);
     if (!self.alive)

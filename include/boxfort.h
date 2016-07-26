@@ -25,6 +25,7 @@
 # define BOXFORT_H_
 
 # include <stddef.h>
+# include <math.h>
 
 typedef unsigned long long bxf_pid;
 typedef int (bxf_fn)(void);
@@ -85,7 +86,7 @@ struct bxf_start_params {
     bxf_callback *callback;
 };
 
-# define BXF_FOREVER ((size_t)-1)
+# define BXF_FOREVER INFINITY
 
 typedef const struct bxf_start_params *bxf_start_params;
 
@@ -96,7 +97,7 @@ int bxf_start_impl(bxf_instance **instance,
         bxf_sandbox *sandbox, bxf_start_params params);
 
 int bxf_term(bxf_instance *instance);
-int bxf_wait(bxf_instance *instance, size_t timeout);
+int bxf_wait(bxf_instance *instance, double timeout);
 
 # define bxf_spawn(Instance, ...) (bxf_spawn_impl((Instance), \
             &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))

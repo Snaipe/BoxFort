@@ -345,13 +345,13 @@ int bxf_term(bxf_instance *instance)
     return 0;
 }
 
-int bxf_wait(bxf_instance *instance, size_t timeout)
+int bxf_wait(bxf_instance *instance, double timeout)
 {
     DWORD dwtimeout;
-    if (timeout == BXF_FOREVER)
+    if (timeout == BXF_FOREVER || !isfinite(timeout))
         dwtimeout = INFINITE;
     else
-        dwtimeout = timeout / 1000000;
+        dwtimeout = trunc(timeout * 1000);
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     if (WaitForSingleObject(sb->proc, dwtimeout) != WAIT_OBJECT_0)

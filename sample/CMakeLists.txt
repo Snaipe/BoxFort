@@ -7,6 +7,7 @@ include_directories(../include)
 set(SAMPLES
     nested.c
     callback.c
+    timeout.c
 )
 
 add_custom_target(boxfort_samples)
