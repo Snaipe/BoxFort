@@ -207,6 +207,7 @@ static void get_status(HANDLE handle, struct bxf_instance *instance)
         sig = SIGABRT;
     instance->status.signal = sig;
     instance->status.exit = exit_code;
+    instance->status.alive = 0;
 }
 
 static void CALLBACK handle_child_terminated(PVOID lpParameter,
@@ -276,6 +277,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,
         .pid = info.dwProcessId,
+        .status.alive = 1,
     };
 
     if (preexec && preexec(&instance->props) < 0)
