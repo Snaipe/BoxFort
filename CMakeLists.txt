@@ -130,7 +130,7 @@ endif ()
 if (NOT HAVE_CLOCK_GETTIME_RT)
   check_symbol_exists(clock_gettime "time.h" HAVE_CLOCK_GETTIME)
 else ()
-  set (HAVE_CLOCK_GETTIME "${HAVE_CLOCK_GETTIME_RT}" CACHE "Have symbol clock_gettime")
+  set (HAVE_CLOCK_GETTIME "${HAVE_CLOCK_GETTIME_RT}" CACHE INTERNAL "Have symbol clock_gettime")
 endif ()
 
 check_symbol_exists(CLOCK_MONOTONIC_RAW "time.h" HAVE_CLOCK_MONOTONIC_RAW)
