@@ -631,7 +631,10 @@ int bxf_wait(bxf_instance *instance, size_t timeout)
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     pthread_mutex_lock(&sb->sync);
     while (instance->status.alive && !instance->status.stopped) {
-        pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
+        if (timeout != BXF_FOREVER)
+            pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
+        else
+            pthread_cond_wait(&sb->cond, &sb->sync);
     }
     pthread_mutex_unlock(&sb->sync);
 
