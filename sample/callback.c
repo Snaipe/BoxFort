@@ -28,8 +28,7 @@ static void callback(bxf_instance *instance)
 
 EXPORT int main(void)
 {
-    bxf_instance *box;
-    _assert(!bxf_spawn(&box, child, .callback = callback));
+    _assert(!bxf_run(child, .callback = callback));
     while (!called);
     return 0;
 }
