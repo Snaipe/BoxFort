@@ -15,6 +15,8 @@ set (SOURCE_FILES ${ASM_FILES}
     src/sandbox-${BXF_OS_FAMILY}.h
     src/sandbox.c
     src/sandbox.h
+    src/timestamp.c
+    src/timestamp.h
 )
 
 configure_file(

@@ -26,6 +26,7 @@
 
 # include <stddef.h>
 # include <math.h>
+# include <stdint.h>
 
 typedef unsigned long long bxf_pid;
 typedef int (bxf_fn)(void);
@@ -62,6 +63,12 @@ struct bxf_instance {
         int alive;
         int stopped;
     } status;
+
+    volatile struct {
+        uint64_t start;
+        uint64_t end;
+        uint64_t elapsed;
+    } time;
 };
 
 typedef const struct bxf_instance bxf_instance;

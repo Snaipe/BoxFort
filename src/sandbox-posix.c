@@ -46,6 +46,7 @@
 #include "addr.h"
 #include "boxfort.h"
 #include "sandbox.h"
+#include "timestamp.h"
 
 #if defined (HAVE_PR_SET_PDEATHSIG)
 # include <sys/prctl.h>
@@ -61,6 +62,10 @@ struct bxfi_sandbox {
     /* A sandbox is said to be mantled if there is an unique instance
        managing its memory. */
     int mantled;
+
+    /* The monotonic timestamp representing the start of the sandbox instance.
+     * Only used to calculate more accurate run times */
+    uint64_t start_monotonic;
 
     pthread_mutex_t sync;
     pthread_cond_t cond;
@@ -81,7 +86,8 @@ static struct {
     .cond = PTHREAD_COND_INITIALIZER,
 };
 
-static struct bxfi_sandbox *reap_child(pid_t pid)
+static struct bxfi_sandbox *reap_child(pid_t pid,
+        uint64_t ts_end, uint64_t mts_end)
 {
     struct bxfi_sandbox *s;
 
@@ -102,6 +108,9 @@ static struct bxfi_sandbox *reap_child(pid_t pid)
         return NULL;
 
     pthread_mutex_lock(&s->sync);
+    s->props.time.end = ts_end;
+    s->props.time.elapsed = mts_end - s->start_monotonic;
+
     if (WIFEXITED(status))
         s->props.status.exit = WEXITSTATUS(status);
     if (WIFSIGNALED(status))
@@ -133,6 +142,9 @@ static void *child_pump_fn(void *nil)
         if (rc)
             continue;
 
+        uint64_t mts_end = bxfi_timestamp_monotonic();
+        uint64_t ts_end = bxfi_timestamp();
+
         for (;;) {
             memset(&infop, 0, sizeof (infop));
             if (waitid(P_ALL, 0, &infop, wflags | WNOHANG) == -1)
@@ -140,7 +152,8 @@ static void *child_pump_fn(void *nil)
             if (!infop.si_pid)
                 break;
 
-            struct bxfi_sandbox *instance = reap_child(infop.si_pid);
+            struct bxfi_sandbox *instance = reap_child(infop.si_pid,
+                    ts_end, mts_end);
             if (!instance)
                 continue;
             if (!instance->props.status.alive && instance->callback)
@@ -505,11 +518,13 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         errnum = -errno;
         goto err;
     } else if (pid) {
+        instance->start_monotonic = bxfi_timestamp_monotonic();
 
         instance->props = (struct bxf_instance) {
             .sandbox = sandbox,
             .pid = pid,
             .status.alive = 1,
+            .time.start = bxfi_timestamp(),
         };
 
         if ((pid = wait_stop(pid)) <= 0) {

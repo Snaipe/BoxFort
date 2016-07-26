@@ -122,14 +122,18 @@ if (HAVE_SHM AND NOT HAVE_LIBRT)
   set (HAVE_LIBRT 1)
 endif ()
 
-check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME)
-if (HAVE_CLOCK_GETTIME AND NOT HAVE_LIBRT)
+check_library_exists(rt clock_gettime "time.h" HAVE_CLOCK_GETTIME_RT)
+if (HAVE_CLOCK_GETTIME_RT AND NOT HAVE_LIBRT)
   set (HAVE_LIBRT 1)
 endif ()
 
-if (NOT HAVE_CLOCK_GETTIME)
+if (NOT HAVE_CLOCK_GETTIME_RT)
   check_symbol_exists(clock_gettime "time.h" HAVE_CLOCK_GETTIME)
+else ()
+  set (HAVE_CLOCK_GETTIME "${HAVE_CLOCK_GETTIME_RT}" CACHE "Have symbol clock_gettime")
 endif ()
+
+check_symbol_exists(CLOCK_MONOTONIC_RAW "time.h" HAVE_CLOCK_MONOTONIC_RAW)
 
 check_symbol_exists(gettimeofday "sys/time.h" HAVE_GETTIMEOFDAY)
 

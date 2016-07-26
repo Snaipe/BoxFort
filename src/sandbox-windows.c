@@ -30,6 +30,7 @@
 
 #include "addr.h"
 #include "sandbox.h"
+#include "timestamp.h"
 
 struct bxfi_sandbox {
     struct bxf_instance props;
@@ -38,6 +39,10 @@ struct bxfi_sandbox {
     /* A sandbox is said to be mantled if there is an unique instance
        managing its memory. */
     int mantled;
+
+    /* The monotonic timestamp representing the start of the sandbox instance.
+     * Only used to calculate more accurate run times */
+    uint64_t start_monotonic;
 };
 
 int bxfi_check_sandbox_ctx(void)
@@ -214,11 +219,18 @@ static void CALLBACK handle_child_terminated(PVOID lpParameter,
         BOOLEAN TimerOrWaitFired)
 {
     (void) TimerOrWaitFired;
+
+    uint64_t mts_end = bxfi_timestamp_monotonic();
+    uint64_t ts_end = bxfi_timestamp();
+
     struct callback_ctx *ctx = lpParameter;
     struct bxfi_sandbox *instance = ctx->instance;
     bxf_callback *callback = ctx->callback;
 
     get_status(instance->proc, &instance->props);
+
+    instance->props.time.end = ts_end;
+    instance->props.time.elapsed = mts_end - instance->start_monotonic;
 
     HANDLE whandle = ctx->whandle;
     free(lpParameter);
@@ -267,6 +279,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     TCHAR filename[MAX_PATH];
     GetModuleFileName(NULL, filename, MAX_PATH);
 
+    uint64_t ts_start = bxfi_timestamp();
+    uint64_t mts_start = bxfi_timestamp_monotonic();
+
     success = CreateProcess(filename, TEXT("boxfort-worker"),
             NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &info);
 
@@ -278,7 +293,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         .sandbox = sandbox,
         .pid = info.dwProcessId,
         .status.alive = 1,
+        .time.start = ts_start,
     };
+
+    instance->start_monotonic = mts_start;
 
     if (preexec && preexec(&instance->props) < 0)
         goto error;
