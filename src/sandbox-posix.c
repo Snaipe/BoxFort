@@ -675,7 +675,7 @@ int bxf_wait(bxf_instance *instance, double timeout)
     timeo = (struct timespec) {
         .tv_sec  = tv.tv_sec + to_s + (tv.tv_usec * 1000 + to_ns) / nanosecs,
         .tv_nsec = (tv.tv_usec * 1000 + to_ns) % nanosecs,
-    }
+    };
 #else
 # error bxf_wait needs a way to get the current time.
 #endif
