@@ -48,6 +48,9 @@ struct bxfi_sandbox {
        managing its memory. */
     int mantled;
 
+    /* Set to 1 if the instance has been waited for in the child pump */
+    int waited;
+
     /* The monotonic timestamp representing the start of the sandbox instance.
      * Only used to calculate more accurate run times */
     uint64_t start_monotonic;

@@ -50,6 +50,8 @@ struct bxfi_sandbox {
     /* The monotonic timestamp representing the start of the sandbox instance.
      * Only used to calculate more accurate run times */
     uint64_t start_monotonic;
+
+    HANDLE waited;
 };
 
 #endif /* !SANDBOX_WINDOWS_H_ */

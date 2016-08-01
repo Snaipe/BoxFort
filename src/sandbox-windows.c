@@ -228,6 +228,8 @@ static void CALLBACK handle_child_terminated(PVOID lpParameter,
 
     if (callback)
         callback(&instance->props);
+
+    SetEvent(instance->waited);
 }
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
@@ -248,6 +250,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (!instance)
         goto error;
     instance->mantled = mantled;
+
+    instance->waited = CreateEvent(NULL, FALSE, FALSE, NULL);
+    if (!instance->waited)
+        goto error;
 
     PROCESS_INFORMATION info;
     STARTUPINFO si = { .cb = sizeof (STARTUPINFO) };
@@ -359,6 +365,7 @@ int bxf_term(bxf_instance *instance)
     if (sb->mantled)
         free((void *) instance->sandbox);
     CloseHandle(sb->proc);
+    CloseHandle(sb->waited);
     free(sb);
     return 0;
 }
@@ -372,8 +379,7 @@ int bxf_wait(bxf_instance *instance, double timeout)
         dwtimeout = trunc(timeout * 1000);
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
-    if (WaitForSingleObject(sb->proc, dwtimeout) != WAIT_OBJECT_0)
+    if (WaitForSingleObject(sb->waited, dwtimeout) != WAIT_OBJECT_0)
         return -ECHILD;
-    get_status(sb->proc, &sb->props);
     return 0;
 }

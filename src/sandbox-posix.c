@@ -102,6 +102,11 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
         s->props.status.signal = WTERMSIG(status);
     s->props.status.stopped = WIFSTOPPED(status);
     s->props.status.alive = WIFSTOPPED(status);
+
+    if (!s->props.status.alive && s->callback)
+        s->callback(&s->props);
+
+    s->waited = 1;
     pthread_cond_broadcast(&s->cond);
     pthread_mutex_unlock(&s->sync);
 
@@ -141,8 +146,6 @@ static void *child_pump_fn(void *nil)
                     ts_end, mts_end);
             if (!instance)
                 continue;
-            if (!instance->props.status.alive && instance->callback)
-                instance->callback(&instance->props);
 
             pthread_mutex_lock(&self.sync);
             struct bxfi_sandbox **prev = &self.alive;
@@ -677,14 +680,15 @@ int bxf_wait(bxf_instance *instance, double timeout)
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     pthread_mutex_lock(&sb->sync);
     int rc = 0;
-    while (instance->status.alive && !instance->status.stopped) {
+    while (!sb->waited) {
         if (timeout == BXF_FOREVER || !isfinite(timeout))
             rc = pthread_cond_wait(&sb->cond, &sb->sync);
         else
             rc = pthread_cond_timedwait(&sb->cond, &sb->sync, &timeo);
-        if (rc == ETIMEDOUT)
+        if (!rc || rc == ETIMEDOUT)
             break;
     }
+    sb->waited = 1;
     pthread_mutex_unlock(&sb->sync);
 
     if (rc)
