@@ -31,19 +31,7 @@
 #include "addr.h"
 #include "sandbox.h"
 #include "timestamp.h"
-
-struct bxfi_sandbox {
-    struct bxf_instance props;
-    HANDLE proc;
-
-    /* A sandbox is said to be mantled if there is an unique instance
-       managing its memory. */
-    int mantled;
-
-    /* The monotonic timestamp representing the start of the sandbox instance.
-     * Only used to calculate more accurate run times */
-    uint64_t start_monotonic;
-};
+#include "timeout.h"
 
 int bxfi_check_sandbox_ctx(void)
 {
@@ -227,6 +215,8 @@ static void CALLBACK handle_child_terminated(PVOID lpParameter,
     struct bxfi_sandbox *instance = ctx->instance;
     bxf_callback *callback = ctx->callback;
 
+    bxfi_cancel_timeout(instance);
+
     get_status(instance->proc, &instance->props);
 
     instance->props.time.end = ts_end;
@@ -297,6 +287,14 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     };
 
     instance->start_monotonic = mts_start;
+
+    if (sandbox->quotas.runtime > 0)
+        if (bxfi_push_timeout(instance, sandbox->quotas.runtime) < 0)
+            goto error;
+
+    if (sandbox->iquotas.runtime > 0)
+        if (bxfi_push_timeout(instance, sandbox->iquotas.runtime) < 0)
+            goto error;
 
     if (preexec && preexec(&instance->props) < 0)
         goto error;

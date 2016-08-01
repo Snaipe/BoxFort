@@ -35,6 +35,7 @@ struct bxf_quotas {
     size_t memory;
     size_t subprocesses;
     size_t files;
+    double runtime;
 };
 
 struct bxf_inheritance {
@@ -62,6 +63,7 @@ struct bxf_instance {
         int exit;
         int alive;
         int stopped;
+        int timed_out;
     } status;
 
     volatile struct {

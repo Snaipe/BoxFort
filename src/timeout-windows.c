@@ -21,35 +21,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SANDBOX_WINDOWS_H_
-# define SANDBOX_WINDOWS_H_
+#include <windows.h>
+#include <errno.h>
 
-# include <windows.h>
+#include "config.h"
+#include "sandbox.h"
 
-struct bxfi_context {
-    size_t total_sz;
-    void *fn;
-    size_t fn_soname_sz;
-    HANDLE sync;
-};
+#define BXFI_TIMEOUT_STATUS 0xEFFFFFFF
 
-struct bxfi_map {
-    struct bxfi_context *ctx;
-    HANDLE handle;
-    TCHAR map_name[sizeof ("bxfi_") + 21];
-};
+void CALLBACK timeout_killer_fn(void *lpParameter, BOOLEAN TimerOrWaitFired)
+{
+    (void) TimerOrWaitFired;
 
-struct bxfi_sandbox {
-    struct bxf_instance props;
-    HANDLE proc;
+    struct bxfi_sandbox *sb = lpParameter;
 
-    /* A sandbox is said to be mantled if there is an unique instance
-       managing its memory. */
-    int mantled;
+    if (WaitForSingleObject(sb->proc, 0) == WAIT_OBJECT_0)
+        return;
 
-    /* The monotonic timestamp representing the start of the sandbox instance.
-     * Only used to calculate more accurate run times */
-    uint64_t start_monotonic;
-};
+    TerminateProcess(sb->proc, BXFI_TIMEOUT_STATUS);
+    sb->props.status.timed_out = 1;
+}
 
-#endif /* !SANDBOX_WINDOWS_H_ */
+int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
+{
+    HANDLE timer;
+    BOOL ok = CreateTimerQueueTimer(&timer, NULL, timeout_killer_fn, instance,
+            timeout * 1000, 0, WT_EXECUTEDEFAULT);
+
+    if (!ok)
+        return -1;
+    return 0;
+}
+
+void bxfi_cancel_timeout(struct bxfi_sandbox *instance)
+{
+    (void) instance;
+}
+
+void bxfi_reset_timeout_killer(void)
+{
+}

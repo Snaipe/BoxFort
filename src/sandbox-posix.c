@@ -25,7 +25,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +46,7 @@
 #include "boxfort.h"
 #include "sandbox.h"
 #include "timestamp.h"
+#include "timeout.h"
 
 #if defined (HAVE_PR_SET_PDEATHSIG)
 # include <sys/prctl.h>
@@ -55,23 +55,6 @@
 #if defined (__APPLE__)
 # include <mach-o/dyld.h>
 #endif
-
-struct bxfi_sandbox {
-    struct bxf_instance props;
-
-    /* A sandbox is said to be mantled if there is an unique instance
-       managing its memory. */
-    int mantled;
-
-    /* The monotonic timestamp representing the start of the sandbox instance.
-     * Only used to calculate more accurate run times */
-    uint64_t start_monotonic;
-
-    pthread_mutex_t sync;
-    pthread_cond_t cond;
-    bxf_callback *callback;
-    struct bxfi_sandbox *next;
-};
 
 static struct {
     struct bxfi_sandbox *alive;
@@ -101,6 +84,8 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
         return NULL;
     }
     pthread_mutex_unlock(&self.sync);
+
+    bxfi_cancel_timeout(s);
 
     int status;
     pid_t rc = waitpid(pid, &status, WNOHANG);
@@ -447,6 +432,8 @@ static void postfork_child(void)
     }
 
     self.alive = NULL;
+
+    bxfi_reset_timeout_killer();
 }
 
 static void init_atfork(void)
@@ -555,6 +542,14 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         if (!local_ctx.ctx->ok)
             goto err;
+
+        if (sandbox->quotas.runtime > 0)
+            if (bxfi_push_timeout(instance, sandbox->quotas.runtime) < 0)
+                goto err;
+
+        if (sandbox->iquotas.runtime > 0)
+            if (bxfi_push_timeout(instance, sandbox->iquotas.runtime) < 0)
+                goto err;
 
         pthread_mutex_lock(&self.sync);
         /* spawn a wait thread if no sandboxes are alive right now */

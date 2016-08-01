@@ -24,6 +24,10 @@
 #ifndef SANDBOX_POSIX_H_
 # define SANDBOX_POSIX_H_
 
+# include <pthread.h>
+# include <stddef.h>
+# include <stdint.h>
+
 struct bxfi_context {
     size_t total_sz;
     void *fn;
@@ -35,6 +39,23 @@ struct bxfi_map {
     struct bxfi_context *ctx;
     int fd;
     char map_name[sizeof ("bxfi_") + 21];
+};
+
+struct bxfi_sandbox {
+    struct bxf_instance props;
+
+    /* A sandbox is said to be mantled if there is an unique instance
+       managing its memory. */
+    int mantled;
+
+    /* The monotonic timestamp representing the start of the sandbox instance.
+     * Only used to calculate more accurate run times */
+    uint64_t start_monotonic;
+
+    pthread_mutex_t sync;
+    pthread_cond_t cond;
+    bxf_callback *callback;
+    struct bxfi_sandbox *next;
 };
 
 #endif /* !SANDBOX_POSIX_H_ */

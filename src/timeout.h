@@ -21,35 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SANDBOX_WINDOWS_H_
-# define SANDBOX_WINDOWS_H_
+#ifndef TIMEOUT_H_
+# define TIMEOUT_H_
 
-# include <windows.h>
+int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout);
+void bxfi_cancel_timeout(struct bxfi_sandbox *instance);
+void bxfi_reset_timeout_killer(void);
 
-struct bxfi_context {
-    size_t total_sz;
-    void *fn;
-    size_t fn_soname_sz;
-    HANDLE sync;
-};
-
-struct bxfi_map {
-    struct bxfi_context *ctx;
-    HANDLE handle;
-    TCHAR map_name[sizeof ("bxfi_") + 21];
-};
-
-struct bxfi_sandbox {
-    struct bxf_instance props;
-    HANDLE proc;
-
-    /* A sandbox is said to be mantled if there is an unique instance
-       managing its memory. */
-    int mantled;
-
-    /* The monotonic timestamp representing the start of the sandbox instance.
-     * Only used to calculate more accurate run times */
-    uint64_t start_monotonic;
-};
-
-#endif /* !SANDBOX_WINDOWS_H_ */
+#endif /* !TIMEOUT_H_ */
