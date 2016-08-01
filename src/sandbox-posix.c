@@ -688,7 +688,8 @@ int bxf_wait(bxf_instance *instance, double timeout)
         if (!rc || rc == ETIMEDOUT)
             break;
     }
-    sb->waited = 1;
+    if (!rc)
+        sb->waited = 1;
     pthread_mutex_unlock(&sb->sync);
 
     if (rc)
