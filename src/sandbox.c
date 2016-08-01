@@ -70,9 +70,9 @@ int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
     if (!sandbox)
         return -ENOMEM;
 
-    sandbox->quotas  = params->quotas;
-    sandbox->iquotas = params->iquotas;
-    sandbox->inherit = params->inherit;
+    /* 2nd parameter must be the start of the BXFI_SANDBOX_FIELDS in the
+       parameter structure */
+    memcpy(sandbox, &params->callback + 1, sizeof (*sandbox));
 
     int rc;
     if ((rc = bxfi_exec(out, sandbox, 1, params->fn,
