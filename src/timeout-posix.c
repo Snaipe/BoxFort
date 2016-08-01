@@ -117,7 +117,9 @@ static void *timeout_killer_fn(void *nil)
         assert(rc == ETIMEDOUT);
         kill(req->pid, SIGPROF);
 
+        pthread_mutex_lock(&req->sb->sync);
         req->sb->props.status.timed_out = 1;
+        pthread_mutex_unlock(&req->sb->sync);
 
         self.requests = req->next;
         free(req);
