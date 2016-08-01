@@ -425,13 +425,12 @@ static void postfork_child(void)
     if (self.alive)
         pthread_join(self.child_pump, NULL);
 
-    for (struct bxfi_sandbox *s = self.alive; s; s = s->next) {
+    for (struct bxfi_sandbox *s = self.alive; s; s = self.alive) {
         memset((void*)&s->props.status, 0, sizeof (s->props.status));
+        self.alive = s->next;
         s->next = self.dead;
         self.dead = s;
     }
-
-    self.alive = NULL;
 
     bxfi_reset_timeout_killer();
 }
