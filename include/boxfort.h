@@ -28,6 +28,69 @@
 # include <math.h>
 # include <stdint.h>
 
+/* Arena API */
+
+/**
+ * The opaque handle type representing a BoxFort memory arena.
+ */
+typedef struct bxf_arena *bxf_arena;
+
+enum {
+    /**
+     * Allow the arena to be resized during allocations.
+     */
+    BXF_ARENA_RESIZE    = (1 << 0),
+
+    /**
+     * Memory may be reclaimed with bxf_arena_free.
+     */
+    BXF_ARENA_DYNAMIC   = (1 << 1),
+
+    /**
+     * If BXF_ARENA_RESIZE is specified, allow the arena to be moved in
+     * memory.
+     *
+     * All allocation operations invalidate virtual addresses inside the arena.
+     */
+    BXF_ARENA_MAYMOVE   = (1 << 2),
+
+    /**
+     * Map 1:1 the arena in the sandbox instance, exactly where the arena
+     * exists in the parent's address space.
+     *
+     * All virtual pointers used by the parent are kept valid in the sandbox
+     * instance.
+     */
+    BXF_ARENA_IDENTITY  = (1 << 3),
+
+    /**
+     * The arena in the sandbox instance is mapped read-only. All write
+     * accesses to memory allocated inside the arena result in a segmentation
+     * fault.
+     */
+    BXF_ARENA_IMMUTABLE = (1 << 4),
+};
+
+typedef intptr_t bxf_ptr;
+
+int bxf_arena_init(size_t initial, int flags, bxf_arena *arena);
+
+int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena);
+
+int bxf_arena_term(bxf_arena *arena);
+
+bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size);
+
+bxf_ptr bxf_arena_realloc(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
+
+int bxf_arena_grow(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
+
+int bxf_arena_free(bxf_arena *arena, bxf_ptr ptr);
+
+void *bxf_arena_ptr(bxf_arena arena, bxf_ptr ptr);
+
+/* Sandbox API */
+
 typedef unsigned long long bxf_pid;
 typedef int (bxf_fn)(void);
 

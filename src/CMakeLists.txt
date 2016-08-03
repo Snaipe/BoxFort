@@ -7,6 +7,8 @@ set (ASM_FILES src/asm/trampoline-${BXF_ARCH}${ASM_EXTENSION})
 set (SOURCE_FILES ${ASM_FILES}
     src/addr.c
     src/addr.h
+    src/arena.c
+    src/arena.h
     src/config.h
     src/exe.h
     src/exe-${BXF_EXE_FORMAT}.c
