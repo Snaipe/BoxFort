@@ -428,10 +428,8 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
 
         newsize = align2_up(newsize, PAGE_SIZE);
         int rc = arena_resize(arena, newsize);
-        if (rc < 0) {
-            printf("Failed\n");
+        if (rc < 0)
             return rc;
-        }
 
         off = (intptr_t)*arena - off;
 
