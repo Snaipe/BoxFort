@@ -29,10 +29,10 @@
 
 struct bxfi_addr {
     const char *soname;
-    void *addr;
+    const void *addr;
 };
 
-int bxfi_normalize_addr(void *addr, struct bxfi_addr *to);
+int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to);
 void *bxfi_denormalize_addr(struct bxfi_addr *addr);
 
 static inline int bxfi_normalize_fnaddr(bxf_fn *addr, struct bxfi_addr *to)

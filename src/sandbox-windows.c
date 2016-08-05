@@ -29,6 +29,7 @@
 #include <tchar.h>
 
 #include "addr.h"
+#include "context.h"
 #include "sandbox.h"
 #include "timestamp.h"
 #include "timeout.h"
@@ -272,6 +273,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     /* Process initialization */
 
+    if (sandbox->inherit.context)
+        if (bxfi_context_prepare(sandbox->inherit.context) < 0)
+            goto error;
+
     TCHAR filename[MAX_PATH];
     GetModuleFileName(NULL, filename, MAX_PATH);
 
@@ -314,6 +319,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     map.ctx->sync = sync;
     map.ctx->fn = addr.addr;
+    bxf_context ictx = sandbox->inherit.context;
+    if (ictx)
+        map.ctx->context = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);
     map.ctx->fn_soname_sz = len + 1;
 

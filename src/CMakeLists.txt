@@ -10,6 +10,8 @@ set (SOURCE_FILES ${ASM_FILES}
     src/arena.c
     src/arena.h
     src/config.h
+    src/context.c
+    src/context.h
     src/exe.h
     src/exe-${BXF_EXE_FORMAT}.c
     src/exe-${BXF_EXE_FORMAT}.h

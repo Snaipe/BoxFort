@@ -111,7 +111,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 #ifdef _WIN32
     a->handle = hndl;
 #else
-    a->fd = fd;
+    a->handle = fd;
 #endif
 
     struct bxfi_arena_chunk *first = ptr_add(a, a->free_chunks);
@@ -134,6 +134,72 @@ error:;
 #endif
 }
 
+int bxfi_arena_prepare(bxfi_fhandle hndl)
+{
+#ifndef _WIN32
+    int flags = fcntl(hndl, F_GETFD);
+    if (flags < 0)
+        return flags;
+    flags &= ~FD_CLOEXEC;
+    int rc = fcntl(hndl, F_SETFD, flags);
+    if (rc < 0)
+        return rc;
+#endif
+    (void) hndl;
+    return 0;
+}
+
+int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena)
+{
+    void *base = NULL;
+    if (flags & BXF_ARENA_IDENTITY)
+        base = *arena;
+
+#ifdef _WIN32
+    DWORD prot;
+    if (flags & BXF_ARENA_IMMUTABLE)
+        prot = FILE_MAP_READ;
+    else
+        prot = FILE_MAP_COPY;
+
+    struct bxf_arena *a = MapViewOfFile(hndl, prot, 0, 0, sizeof (*a));
+
+    if (!a)
+        return -ENOMEM;
+
+    size_t size = a->size;
+    UnmapViewOfFile(a);
+
+    a = MapViewOfFileEx(hndl, prot, 0, 0, size, base);
+    if (!a)
+        return -ENOMEM;
+#else
+    int mmapfl = MAP_PRIVATE;
+    if (flags & BXF_ARENA_IDENTITY)
+        mmapfl |= MAP_FIXED;
+
+    int prot = PROT_READ;
+    if (!(flags & BXF_ARENA_IMMUTABLE))
+        prot |= PROT_WRITE;
+
+    struct bxf_arena *a = mmap(NULL, sizeof (*a), prot, MAP_PRIVATE, hndl, 0);
+
+    if (a == MAP_FAILED)
+        return -errno;
+
+    size_t size = a->size;
+    munmap(a, sizeof (*a));
+
+    a = mmap(base, size, prot, mmapfl, hndl, 0);
+
+    if (a == MAP_FAILED)
+        return -errno;
+#endif
+    *arena = a;
+    return 0;
+}
+
+
 int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena)
 {
     int rc = bxf_arena_init(orig->size, flags, arena);
@@ -150,7 +216,7 @@ int bxf_arena_term(bxf_arena *arena)
     CloseHandle((*arena)->handle);
     UnmapViewOfFile(*arena);
 #else
-    close((*arena)->fd);
+    close((*arena)->handle);
     munmap(*arena, (*arena)->size);
 #endif
     *arena = NULL;
@@ -195,7 +261,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
         return -ENOMEM;
     return 0;
 #else
-    if (ftruncate((*arena)->fd, newsize) < 0)
+    if (ftruncate((*arena)->handle, newsize) < 0)
         return -ENOMEM;
 
 # if defined (HAVE_MREMAP)
@@ -225,7 +291,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
 
         msync(*arena, (*arena)->size, MS_SYNC);
         struct bxf_arena *a = mmap(*arena, newsize, PROT_READ | PROT_WRITE,
-                MAP_SHARED, (*arena)->fd, 0);
+                MAP_SHARED, (*arena)->handle, 0);
         if (a == MAP_FAILED)
             return -ENOMEM;
 
@@ -235,7 +301,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
     } else {
         size_t remsz = newsize - (*arena)->size;
         void *raddr = mmap(addr_hi, remsz, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_FIXED, (*arena)->fd, (*arena)->size);
+                MAP_SHARED | MAP_FIXED, (*arena)->handle, (*arena)->size);
         if (raddr == MAP_FAILED)
             return -errno;
     }
@@ -466,6 +532,20 @@ int bxf_arena_free(bxf_arena *arena, bxf_ptr p)
         chunk->next = chunk->next;
     }
     chunk->addr = 0;
+    return 0;
+}
+
+int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user)
+{
+    struct bxfi_arena_chunk *c = (void *)(arena + 1);
+    for (; (void*)c < ptr_add(arena, arena->size);
+            c = ptr_add(c, c->size)) {
+        if (c->addr) {
+            int rc = fn(ptr_add(arena, c->addr), c->size - sizeof (*c), user);
+            if (rc)
+                return rc;
+        }
+    }
     return 0;
 }
 

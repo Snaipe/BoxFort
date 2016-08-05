@@ -44,6 +44,7 @@
 
 #include "addr.h"
 #include "boxfort.h"
+#include "context.h"
 #include "sandbox.h"
 #include "timestamp.h"
 #include "timeout.h"
@@ -394,8 +395,11 @@ static int setup_inheritance(bxf_sandbox *sandbox)
         struct rlimit rl;
         if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
             return -errno;
-        for (int fd = 3; fd < (int) rl.rlim_cur; ++fd)
-            close(fd);
+        for (int fd = 3; fd < (int) rl.rlim_cur; ++fd) {
+            int flags = fcntl(fd, F_GETFD);
+            if (flags > 0 && !(flags & FD_CLOEXEC))
+                close(fd);
+        }
     }
     return 0;
 }
@@ -533,6 +537,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         local_ctx.ctx->ok = 0;
         local_ctx.ctx->fn = addr.addr;
+        bxf_context ictx = sandbox->inherit.context;
+        if (ictx)
+            local_ctx.ctx->context = bxfi_context_gethandle(ictx);
         memcpy(local_ctx.ctx + 1, addr.soname, len + 1);
         local_ctx.ctx->fn_soname_sz = len + 1;
 
@@ -590,6 +597,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     if (setup_inheritance(sandbox) < 0)
         abort();
+
+    if (sandbox->inherit.context)
+        if (bxfi_context_prepare(sandbox->inherit.context) < 0)
+            abort();
 
     raise(SIGSTOP);
 

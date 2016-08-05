@@ -21,40 +21,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SANDBOX_WINDOWS_H_
-# define SANDBOX_WINDOWS_H_
+#ifndef CONTEXT_H_
+# define CONTEXT_H_
 
-# include <windows.h>
+# include "addr.h"
+# include "arena.h"
 
-typedef HANDLE bxfi_fhandle;
-
-struct bxfi_context {
-    size_t total_sz;
-    const void *fn;
-    bxfi_fhandle context;
-    size_t fn_soname_sz;
-    HANDLE sync;
+struct bxf_context {
+    bxf_arena arena;
 };
 
-struct bxfi_map {
-    struct bxfi_context *ctx;
-    HANDLE handle;
-    TCHAR map_name[sizeof ("bxfi_") + 21];
+enum bxfi_ctx_tag {
+    BXFI_TAG_STATIC,
+    BXFI_TAG_ARENA,
+    BXFI_TAG_OBJECT,
 };
 
-struct bxfi_sandbox {
-    struct bxf_instance props;
-    HANDLE proc;
-
-    /* A sandbox is said to be mantled if there is an unique instance
-       managing its memory. */
-    int mantled;
-
-    /* The monotonic timestamp representing the start of the sandbox instance.
-     * Only used to calculate more accurate run times */
-    uint64_t start_monotonic;
-
-    HANDLE waited;
+struct bxfi_ctx_static {
+    enum bxfi_ctx_tag tag;
+    const void *addr;
+    size_t size;
+    char data[];
 };
 
-#endif /* !SANDBOX_WINDOWS_H_ */
+struct bxfi_ctx_arena {
+    enum bxfi_ctx_tag tag;
+    int flags;
+    void *base;
+    bxfi_fhandle handle;
+};
+
+struct bxfi_ctx_object {
+    enum bxfi_ctx_tag tag;
+    size_t namesz;
+    char data[];
+};
+
+bxfi_fhandle bxfi_context_gethandle(bxf_context ctx);
+int bxfi_context_prepare(bxf_context ctx);
+int bxfi_context_inherit(bxfi_fhandle hndl);
+
+#endif /* !CONTEXT_H_ */

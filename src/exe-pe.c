@@ -78,7 +78,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_addr(void *addr)
+bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
 {
     MEMORY_BASIC_INFORMATION mbi;
     if (VirtualQuery(addr, &mbi, sizeof(mbi)))

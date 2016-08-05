@@ -28,7 +28,7 @@
 #include "addr.h"
 #include "exe.h"
 
-int bxfi_normalize_addr(void *addr, struct bxfi_addr *to)
+int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to)
 {
     bxfi_exe_lib lib = bxfi_lib_from_addr(addr);
     if (lib == BXFI_INVALID_LIB)

@@ -92,7 +92,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_addr(void *addr)
+bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
 {
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */

@@ -24,6 +24,7 @@
 #ifndef BOXFORT_H_
 # define BOXFORT_H_
 
+# include <stdio.h>
 # include <stddef.h>
 # include <math.h>
 # include <stdint.h>
@@ -73,6 +74,8 @@ enum {
 
 typedef intptr_t bxf_ptr;
 
+typedef int (bxf_arena_fn)(void *, size_t, void *);
+
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena);
 
 int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena);
@@ -87,7 +90,30 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
 
 int bxf_arena_free(bxf_arena *arena, bxf_ptr ptr);
 
+int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user);
+
 void *bxf_arena_ptr(bxf_arena arena, bxf_ptr ptr);
+
+/* Resource context API */
+
+typedef struct bxf_context *bxf_context;
+
+int bxf_context_init(bxf_context *ctx);
+
+int bxf_context_term(bxf_context ctx);
+
+int bxf_context_addstatic(bxf_context ctx, const void *ptr, size_t size);
+
+int bxf_context_addarena(bxf_context ctx, bxf_arena arena);
+
+int bxf_context_addobject(bxf_context ctx, const char *name,
+        const void *ptr, size_t size);
+
+int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr);
+
+int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);
+
+int bxf_context_getfile(bxf_context ctx, const char *name, FILE **file);
 
 /* Sandbox API */
 
@@ -104,6 +130,7 @@ struct bxf_quotas {
 struct bxf_inheritance {
     int files   : 1;
     int data    : 1;
+    bxf_context context;
 };
 
 # define BXFI_SANDBOX_FIELDS        \

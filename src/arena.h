@@ -29,25 +29,24 @@
 # endif
 # include <stdint.h>
 
+# include "boxfort.h"
+# include "sandbox.h"
+
 struct bxfi_arena_chunk {
     intptr_t addr;
     size_t size;
     intptr_t next;
 };
 
-#define BXFI_ARENA_NAME_SIZE (sizeof ("bxf_arena__") + 31)
-
 struct bxf_arena {
     void *addr;
     size_t size;
-    int flags;
     intptr_t free_chunks;
-
-#ifdef _WIN32
-    HANDLE handle;
-#else
-    int fd;
-#endif
+    int flags;
+    bxfi_fhandle handle;
 };
+
+int bxfi_arena_prepare(bxfi_fhandle hndl);
+int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena);
 
 #endif /* !ARENA_H_ */
