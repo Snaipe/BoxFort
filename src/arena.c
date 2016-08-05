@@ -134,21 +134,6 @@ error:;
 #endif
 }
 
-int bxfi_arena_prepare(bxfi_fhandle hndl)
-{
-#ifndef _WIN32
-    int flags = fcntl(hndl, F_GETFD);
-    if (flags < 0)
-        return flags;
-    flags &= ~FD_CLOEXEC;
-    int rc = fcntl(hndl, F_SETFD, flags);
-    if (rc < 0)
-        return rc;
-#endif
-    (void) hndl;
-    return 0;
-}
-
 int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena)
 {
     void *base = NULL;

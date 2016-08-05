@@ -233,12 +233,69 @@ static void CALLBACK handle_child_terminated(PVOID lpParameter,
     SetEvent(instance->waited);
 }
 
+struct bxfi_prepare_ctx {
+    HANDLE *handles;
+    uint8_t *inherited;
+    size_t size;
+    size_t capacity;
+};
+
+static void prepare_ctx_term(struct bxfi_prepare_ctx *ctx)
+{
+    for (size_t i = 0; i < ctx->size; ++i) {
+        if (!ctx->inherited[i]) {
+            if (!SetHandleInformation(ctx->handles[i], HANDLE_FLAG_INHERIT, 0))
+                continue;
+        }
+    }
+    free(ctx->handles);
+    free(ctx->inherited);
+    ctx->capacity = 0;
+}
+
+static int do_inherit_handle(bxfi_fhandle handle, void *user)
+{
+    struct bxfi_prepare_ctx *ctx = user;
+    if (!ctx->handles) {
+        ctx->handles = malloc(32 * sizeof (HANDLE));
+        ctx->inherited = malloc(32);
+        ctx->capacity = 32;
+    }
+
+    /* Reserve a slot for the sync event handle */
+    if (ctx->size + 2 >= ctx->capacity) {
+        ctx->capacity *= 1.61;
+        ctx->handles = realloc(ctx->handles, ctx->capacity);
+        ctx->inherited = realloc(ctx->inherited, ctx->capacity);
+    }
+
+    ctx->handles[ctx->size++] = handle;
+    ctx->inherited[ctx->size - 1] = 1;
+
+    DWORD info;
+    if (!GetHandleInformation(handle, &info))
+        return -EINVAL;
+
+    if (info & HANDLE_FLAG_INHERIT)
+        return 0;
+
+    if (!SetHandleInformation(handle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
+        return -EINVAL;
+
+    ctx->inherited[ctx->size - 1] = 0;
+    return 0;
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
 {
     int errnum = 0;
     struct bxfi_sandbox *instance = NULL;
     BOOL success = FALSE;
+
+    struct bxfi_prepare_ctx prep = {
+        .handles = NULL,
+    };
 
     /* Process params and allocate relevant ressources */
 
@@ -257,7 +314,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         goto error;
 
     PROCESS_INFORMATION info;
-    STARTUPINFO si = { .cb = sizeof (STARTUPINFO) };
+    STARTUPINFOEX si = { .StartupInfo.cb = sizeof (si) };
 
     ZeroMemory(&info, sizeof (info));
 
@@ -273,9 +330,39 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     /* Process initialization */
 
-    if (sandbox->inherit.context)
-        if (bxfi_context_prepare(sandbox->inherit.context) < 0)
+    bxf_context ictx = sandbox->inherit.context;
+
+    if (ictx) {
+        if (bxfi_context_prepare(ictx, do_inherit_handle, &prep) < 0)
             goto error;
+    }
+
+    if (!prep.handles) {
+        prep.handles = &sync;
+        prep.size = 1;
+    } else {
+        prep.handles[prep.size++] = sync;
+    }
+
+    if (!sandbox->inherit.files) {
+        SIZE_T attrsz = 0;
+        InitializeProcThreadAttributeList(NULL, 1, 0, &attrsz);
+
+        LPPROC_THREAD_ATTRIBUTE_LIST attr = malloc(attrsz);
+        if (!attr)
+            goto error;
+        BOOL ok = InitializeProcThreadAttributeList(attr, 1, 0, &attrsz);
+        if (!ok)
+            goto error;
+
+        si.lpAttributeList = attr;
+
+        ok = UpdateProcThreadAttribute(attr, 0,
+                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep.handles,
+                prep.size * sizeof(HANDLE), NULL, NULL);
+        if (!ok)
+            goto error;
+    }
 
     TCHAR filename[MAX_PATH];
     GetModuleFileName(NULL, filename, MAX_PATH);
@@ -284,11 +371,14 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     uint64_t mts_start = bxfi_timestamp_monotonic();
 
     success = CreateProcess(filename, TEXT("boxfort-worker"),
-            NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, &si, &info);
+            NULL, NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
+            NULL, NULL, &si.StartupInfo, &info);
 
     errnum = -EPROTO;
     if (!success)
         goto error;
+
+    DeleteProcThreadAttributeList(si.lpAttributeList);
 
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,
@@ -310,6 +400,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (preexec && preexec(&instance->props) < 0)
         goto error;
 
+    if (prep.capacity)
+        prepare_ctx_term(&prep);
+
     instance->proc = info.hProcess;
     size_t len = strlen(addr.soname);
 
@@ -319,7 +412,6 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     map.ctx->sync = sync;
     map.ctx->fn = addr.addr;
-    bxf_context ictx = sandbox->inherit.context;
     if (ictx)
         map.ctx->context = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);
@@ -357,6 +449,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     return 0;
 
 error:
+    if (prep.capacity)
+        prepare_ctx_term(&prep);
+    if (si.lpAttributeList)
+        DeleteProcThreadAttributeList(si.lpAttributeList);
     if (sync)
         CloseHandle(sync);
     if (!success) {

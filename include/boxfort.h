@@ -96,6 +96,12 @@ void *bxf_arena_ptr(bxf_arena arena, bxf_ptr ptr);
 
 /* Resource context API */
 
+#ifdef _WIN32
+typedef void *bxf_fhandle;
+#else
+typedef int bxf_fhandle;
+#endif
+
 typedef struct bxf_context *bxf_context;
 
 int bxf_context_init(bxf_context *ctx);
@@ -110,6 +116,8 @@ int bxf_context_addobject(bxf_context ctx, const char *name,
         const void *ptr, size_t size);
 
 int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr);
+
+int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl);
 
 int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);
 

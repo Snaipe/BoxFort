@@ -141,14 +141,33 @@ int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr)
     return found;
 }
 
+int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl)
+{
+    struct bxfi_ctx_fhandle *elt;
+
+    bxf_ptr p = bxf_arena_alloc(&ctx->arena, sizeof (*elt));
+    if (p < 0)
+        return p;
+
+    elt = bxf_arena_ptr(ctx->arena, p);
+
+    elt->tag    = BXFI_TAG_FHANDLE;
+    elt->handle = hndl;
+    return 0;
+}
+
 int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file)
 {
 #ifdef _WIN32
     HANDLE hndl = (HANDLE) _get_osfhandle(_fileno(file));
-    int rc = bxf_context_addobject(ctx, name, &hndl, sizeof (hndl));
+    int rc = bxf_context_addfhandle(ctx, hndl);
+    if (!rc)
+        rc = bxf_context_addobject(ctx, name, &hndl, sizeof (hndl));
 #else
     int fd = fileno(file);
-    int rc = bxf_context_addobject(ctx, name, &fd, sizeof (int));
+    int rc = bxf_context_addfhandle(ctx, fd);
+    if (!rc)
+        rc = bxf_context_addobject(ctx, name, &fd, sizeof (int));
 #endif
     return rc;
 }
@@ -181,9 +200,15 @@ bxfi_fhandle bxfi_context_gethandle(bxf_context ctx)
     return ctx->arena->handle;
 }
 
+struct bxfi_prepare_ctx {
+    bxfi_fhandle_fn *fn;
+    void *user;
+};
+
 static int prepare_elt(void *ptr, size_t size, void *user)
 {
-    (void) size, (void) user;
+    (void) size;
+    struct bxfi_prepare_ctx *ctx = user;
 
     enum bxfi_ctx_tag *tag = ptr;
     switch (*tag) {
@@ -202,19 +227,32 @@ static int prepare_elt(void *ptr, size_t size, void *user)
         } break;
         case BXFI_TAG_ARENA: {
             struct bxfi_ctx_arena *elt = ptr;
-            bxfi_arena_prepare(elt->handle);
+            if (ctx->fn)
+                return ctx->fn(elt->handle, ctx->user);
+        } break;
+        case BXFI_TAG_FHANDLE: {
+            struct bxfi_ctx_fhandle *elt = ptr;
+            if (ctx->fn)
+                return ctx->fn(elt->handle, ctx->user);
         } break;
         default: break;
     }
     return 0;
 }
 
-int bxfi_context_prepare(bxf_context ctx)
+int bxfi_context_prepare(bxf_context ctx, bxfi_fhandle_fn *fn, void *user)
 {
-    int rc = bxfi_arena_prepare(ctx->arena->handle);
-    if (rc < 0)
-        return rc;
-    return bxf_arena_iter(ctx->arena, prepare_elt, NULL);
+    struct bxfi_prepare_ctx uctx = {
+        .fn = fn,
+        .user = user,
+    };
+
+    if (fn) {
+        int rc = fn(ctx->arena->handle, user);
+        if (rc < 0)
+            return rc;
+    }
+    return bxf_arena_iter(ctx->arena, prepare_elt, &uctx);
 }
 
 static int inherit_elt(void *ptr, size_t size, void *user)

@@ -389,17 +389,69 @@ static int setup_limits(bxf_sandbox *sandbox)
     return 0;
 }
 
+static int nocloexec_fd(bxfi_fhandle fd, void *ctx)
+{
+    (void) ctx;
+
+    int flags = fcntl(fd, F_GETFD);
+    if (flags < 0)
+        return -errno;
+    flags &= ~FD_CLOEXEC;
+    int rc = fcntl(fd, F_SETFD, flags);
+    if (rc < 0)
+        return -errno;
+    return 0;
+}
+
+static int inherit_fd(bxfi_fhandle fd, void *ctx)
+{
+    int rc = nocloexec_fd(fd, NULL);
+    if (rc < 0)
+        return rc;
+
+    uint8_t *do_close = ctx;
+    do_close[fd] = 0;
+    return 0;
+}
+
 static int setup_inheritance(bxf_sandbox *sandbox)
 {
-    if (!sandbox->inherit.files) {
+    bxf_context ctx = sandbox->inherit.context;
+    if (sandbox->inherit.files) {
+        int rc = 0;
+        if (ctx)
+            rc = bxfi_context_prepare(ctx, nocloexec_fd, NULL);
+        return rc;
+    } else {
         struct rlimit rl;
         if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
             return -errno;
-        for (int fd = 3; fd < (int) rl.rlim_cur; ++fd) {
+
+        uint8_t *do_close = malloc(rl.rlim_cur);
+        if (!do_close)
+            return -errno;
+
+        memset(do_close, 1, rl.rlim_cur);
+        do_close[STDIN_FILENO] = 0;
+        do_close[STDOUT_FILENO] = 0;
+        do_close[STDERR_FILENO] = 0;
+
+        if (ctx) {
+            int rc = bxfi_context_prepare(ctx, inherit_fd, do_close);
+            if (rc < 0) {
+                free(do_close);
+                return rc;
+            }
+        }
+
+        for (int fd = 0; fd < (int) rl.rlim_cur; ++fd) {
+            if (!do_close[fd])
+                continue;
             int flags = fcntl(fd, F_GETFD);
             if (flags > 0 && !(flags & FD_CLOEXEC))
                 close(fd);
         }
+        free(do_close);
     }
     return 0;
 }
@@ -597,10 +649,6 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     if (setup_inheritance(sandbox) < 0)
         abort();
-
-    if (sandbox->inherit.context)
-        if (bxfi_context_prepare(sandbox->inherit.context) < 0)
-            abort();
 
     raise(SIGSTOP);
 

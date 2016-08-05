@@ -35,6 +35,7 @@ enum bxfi_ctx_tag {
     BXFI_TAG_STATIC,
     BXFI_TAG_ARENA,
     BXFI_TAG_OBJECT,
+    BXFI_TAG_FHANDLE,
 };
 
 struct bxfi_ctx_static {
@@ -57,8 +58,15 @@ struct bxfi_ctx_object {
     char data[];
 };
 
+struct bxfi_ctx_fhandle {
+    enum bxfi_ctx_tag tag;
+    bxfi_fhandle handle;
+};
+
+typedef int (bxfi_fhandle_fn)(bxfi_fhandle, void *);
+
 bxfi_fhandle bxfi_context_gethandle(bxf_context ctx);
-int bxfi_context_prepare(bxf_context ctx);
+int bxfi_context_prepare(bxf_context ctx, bxfi_fhandle_fn *fn, void *user);
 int bxfi_context_inherit(bxfi_fhandle hndl);
 
 #endif /* !CONTEXT_H_ */

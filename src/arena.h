@@ -46,7 +46,6 @@ struct bxf_arena {
     bxfi_fhandle handle;
 };
 
-int bxfi_arena_prepare(bxfi_fhandle hndl);
 int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena);
 
 #endif /* !ARENA_H_ */
