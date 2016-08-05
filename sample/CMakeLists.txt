@@ -8,6 +8,7 @@ set(SAMPLES
     nested.c
     callback.c
     timeout.c
+    context.c
 )
 
 add_custom_target(boxfort_samples)
