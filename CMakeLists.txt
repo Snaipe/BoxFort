@@ -73,6 +73,7 @@ endif ()
 
 option (USE_QEMU "Use QEMU to run the tests" OFF)
 option (BXF_ARENA_REOPEN_SHM "Reopen the arena shm in child processes (POSIX)" OFF)
+option (BXF_ARENA_FILE_BACKED "Arena memory is file-backed (POSIX)" OFF)
 
 # Assume ELF on POSIX initially, override values when needed
 set (BXF_EXE_FORMAT elf)
@@ -87,6 +88,7 @@ elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     # This is mandatory because OS X fails silently when mmap'ing an inherited
     # shm file descriptor
     set (BXF_ARENA_REOPEN_SHM 1)
+    set (BXF_ARENA_FILE_BACKED 1)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Windows")
     set (BXF_EXE_FORMAT pe)
     set (BXF_OS_FAMILY windows)

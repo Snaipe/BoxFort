@@ -112,18 +112,34 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     static size_t count;
 
     size_t id = __sync_fetch_and_add(&count, 1);
+#  ifdef BXF_ARENA_FILE_BACKED
+    snprintf(name, sizeof (name), "/tmp/bxf_arena_%d_%zu", getpid(), id);
+#  else
     snprintf(name, sizeof (name), "/bxf_arena_%d_%zu", getpid(), id);
+#  endif
 # else
+#  ifdef BXF_ARENA_FILE_BACKED
+    snprintf(name, sizeof (name), "/tmp/bxf_arena_%d", getpid());
+#  else
     snprintf(name, sizeof (name), "/bxf_arena_%d", getpid());
+#  endif
 # endif
 
+# ifdef BXF_ARENA_FILE_BACKED
+    int fd = open(name, O_CREAT | O_RDWR | O_EXCL, 0600);
+# else
     int fd = shm_open(name, O_CREAT | O_RDWR | O_EXCL, 0600);
+# endif
 
     if (fd == -1)
         goto error;
 
 # ifndef BXF_ARENA_REOPEN_SHM
+#  ifdef BXF_ARENA_FILE_BACKED
+    unlink(name);
+#  else
     shm_unlink(name);
+#  endif
 # endif
 
     if (ftruncate(fd, initial) == -1)
@@ -198,7 +214,11 @@ error:;
     int errnum = errno;
     if (fd != -1) {
 # ifdef BXF_ARENA_REOPEN_SHM
+#  ifdef BXF_ARENA_FILE_BACKED
+        unlink(name);
+#  else
         shm_unlink(name);
+#  endif
 # endif
         close(fd);
     }
@@ -274,7 +294,11 @@ int bxf_arena_term(bxf_arena *arena)
     UnmapViewOfFile(*arena);
 #else
 # ifdef BXF_ARENA_REOPEN_SHM
+#  ifdef BXF_ARENA_FILE_BACKED
+    unlink((*arena)->name);
+#  else
     shm_unlink((*arena)->name);
+# endif
 # endif
     close((*arena)->handle);
     munmap(*arena, (*arena)->size);

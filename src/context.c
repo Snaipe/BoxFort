@@ -291,7 +291,11 @@ static int inherit_elt(void *ptr, size_t size, void *user)
             bxf_arena arena = elt->base;
 
 #ifdef BXF_ARENA_REOPEN_SHM
+# ifdef BXF_ARENA_FILE_BACKED
+            int hndl = open(elt->name, O_RDONLY, 0600);
+# else
             int hndl = shm_open(elt->name, O_RDONLY, 0600);
+# endif
             if (hndl < 0)
                 return -errno;
 #else
@@ -310,7 +314,11 @@ int bxfi_context_inherit(struct bxfi_ctx_arena *ctx)
     if (!ctx->name[0])
         return 0;
 
+# ifdef BXF_ARENA_FILE_BACKED
+    int hndl = open(ctx->name, O_RDONLY, 0600);
+# else
     int hndl = shm_open(ctx->name, O_RDONLY, 0600);
+# endif
     if (hndl < 0)
         return -errno;
 #else

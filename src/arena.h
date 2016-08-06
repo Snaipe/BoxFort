@@ -39,9 +39,17 @@ struct bxfi_arena_chunk {
 };
 
 # ifdef BXF_ARENA_REOPEN_SHM
-#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena__") + 31)
+#  ifdef BXF_ARENA_FILE_BACKED
+#   define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena__") + 31)
+#  else
+#   define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena__") + 31)
+#  endif
 # else
-#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena_") + 11)
+#  ifdef BXF_ARENA_FILE_BACKED
+#   define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena_") + 11)
+#  else
+#   define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena_") + 11)
+#  endif
 # endif
 
 struct bxf_arena {
