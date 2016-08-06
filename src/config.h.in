@@ -52,4 +52,7 @@
 #cmakedefine HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP \
     @HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP@
 
+# define BXFI_STR_(x) #x
+# define BXFI_STR(x) BXFI_STR_(x)
+
 #endif /* !CONFIG_H_IN_ */

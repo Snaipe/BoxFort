@@ -27,13 +27,7 @@
 # include "boxfort.h"
 # include "config.h"
 
-# define BXFI_OS_SANDBOX_STR_(x) #x
-# define BXFI_OS_SANDBOX_STR(x) BXFI_OS_SANDBOX_STR_(x)
-
-# define BXFI_OS_SANDBOX_H_ sandbox-BXF_OS_FAMILY.h
-# define BXFI_OS_SANDBOX_H BXFI_OS_SANDBOX_STR(BXFI_OS_SANDBOX_H_)
-
-# include BXFI_OS_SANDBOX_H
+# include BXFI_STR(sandbox-BXF_OS_FAMILY.h)
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback);
