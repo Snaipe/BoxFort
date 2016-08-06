@@ -45,6 +45,8 @@ EXPORT int main(void)
     /* We run the child function with the created context */
     _assert(!bxf_run(child, .inherit.context = ctx));
 
+    _assert(!bxf_arena_term(&arena));
+
     _assert(!bxf_context_term(ctx));
     return 0;
 }
