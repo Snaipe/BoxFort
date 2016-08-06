@@ -101,15 +101,30 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         goto error;
 
 #else
-    char name[sizeof ("/bxf_arena_") + 21];
+
+    char name[BXFI_ARENA_NAME_SIZE];
+
+    /* Some platforms (like OS X) have the *great* idea of silently failing
+       all mapping operations on inherited shm file descriptors. We have
+       to provide a fallback for these dipshits by reopening the shm file
+       in the child instance. */
+# ifdef BXF_ARENA_REOPEN_SHM
+    static size_t count;
+
+    size_t id = __sync_fetch_and_add(&count, 1);
+    snprintf(name, sizeof (name), "/bxf_arena_%d_%zu", getpid(), id);
+# else
     snprintf(name, sizeof (name), "/bxf_arena_%d", getpid());
+# endif
 
     int fd = shm_open(name, O_CREAT | O_RDWR | O_EXCL, 0600);
 
     if (fd == -1)
         goto error;
 
+# ifndef BXF_ARENA_REOPEN_SHM
     shm_unlink(name);
+# endif
 
     if (ftruncate(fd, initial) == -1)
         goto error;
@@ -157,6 +172,10 @@ retry:;
     a->addr = a;
     a->free_chunks = sizeof (*a);
 
+#ifdef BXF_ARENA_REOPEN_SHM
+    strcpy(a->name, name);
+#endif
+
 #ifdef _WIN32
     a->handle = hndl;
 #else
@@ -177,8 +196,12 @@ error:;
     return -ENOMEM;
 #else
     int errnum = errno;
-    if (fd != -1)
+    if (fd != -1) {
+# ifdef BXF_ARENA_REOPEN_SHM
+        shm_unlink(name);
+# endif
         close(fd);
+    }
     return -errnum;
 #endif
 }
@@ -250,6 +273,9 @@ int bxf_arena_term(bxf_arena *arena)
     CloseHandle((*arena)->handle);
     UnmapViewOfFile(*arena);
 #else
+# ifdef BXF_ARENA_REOPEN_SHM
+    shm_unlink((*arena)->name);
+# endif
     close((*arena)->handle);
     munmap(*arena, (*arena)->size);
 #endif

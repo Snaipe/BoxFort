@@ -42,6 +42,8 @@
 #cmakedefine BXF_EXE_FMT_PE @BXF_EXE_FMT_PE@
 #cmakedefine BXF_EXE_FMT_MACH_O @BXF_EXE_FMT_MACH_O@
 
+#cmakedefine BXF_ARENA_REOPEN_SHM @BXF_ARENA_REOPEN_SHM@
+
 #cmakedefine HAVE__R_DEBUG @HAVE__R_DEBUG@
 #cmakedefine HAVE__DYNAMIC @HAVE__DYNAMIC@
 #cmakedefine HAVE_ELF_AUXV_T @HAVE_ELF_AUXV_T@

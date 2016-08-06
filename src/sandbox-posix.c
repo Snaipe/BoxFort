@@ -590,8 +590,13 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         local_ctx.ctx->ok = 0;
         local_ctx.ctx->fn = addr.addr;
         bxf_context ictx = sandbox->inherit.context;
-        if (ictx)
-            local_ctx.ctx->context = bxfi_context_gethandle(ictx);
+        if (ictx) {
+#ifdef BXF_ARENA_REOPEN_SHM
+            strcpy(local_ctx.ctx->context.name, ictx->arena->name);
+#else
+            local_ctx.ctx->context.handle = ictx->arena->handle;
+#endif
+        }
         memcpy(local_ctx.ctx + 1, addr.soname, len + 1);
         local_ctx.ctx->fn_soname_sz = len + 1;
 

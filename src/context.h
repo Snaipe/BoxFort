@@ -49,7 +49,12 @@ struct bxfi_ctx_arena {
     enum bxfi_ctx_tag tag;
     int flags;
     void *base;
+
+# ifdef BXF_ARENA_REOPEN_SHM
+    char name[BXFI_ARENA_NAME_SIZE];
+# else
     bxf_fhandle handle;
+#endif
 };
 
 struct bxfi_ctx_object {
@@ -67,6 +72,7 @@ typedef int (bxf_fhandle_fn)(bxf_fhandle, void *);
 
 bxf_fhandle bxfi_context_gethandle(bxf_context ctx);
 int bxfi_context_prepare(bxf_context ctx, bxf_fhandle_fn *fn, void *user);
-int bxfi_context_inherit(bxf_fhandle hndl);
+
+int bxfi_context_inherit(struct bxfi_ctx_arena *ctx);
 
 #endif /* !CONTEXT_H_ */

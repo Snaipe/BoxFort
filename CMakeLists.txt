@@ -72,6 +72,7 @@ else ()
 endif ()
 
 option (USE_QEMU "Use QEMU to run the tests" OFF)
+option (BXF_ARENA_REOPEN_SHM "Reopen the arena shm in child processes (POSIX)" OFF)
 
 # Assume ELF on POSIX initially, override values when needed
 set (BXF_EXE_FORMAT elf)
@@ -82,6 +83,10 @@ if (CMAKE_SYSTEM_NAME MATCHES "(Linux|(Free|Net|Open)?BSD|Solaris|SunOS)")
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set (BXF_EXE_FORMAT mach-o)
     set (BXF_MANGLING "leading-underscore")
+
+    # This is mandatory because OS X fails silently when mmap'ing an inherited
+    # shm file descriptor
+    set (BXF_ARENA_REOPEN_SHM 1)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Windows")
     set (BXF_EXE_FORMAT pe)
     set (BXF_OS_FAMILY windows)

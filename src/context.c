@@ -34,6 +34,11 @@
 # include <io.h>
 #endif
 
+#ifdef BXF_ARENA_REOPEN_SHM
+# include <sys/mman.h>
+# include <fcntl.h>
+#endif
+
 int bxf_context_init(bxf_context *ctx)
 {
     struct bxf_context *nctx = malloc(sizeof (*nctx));
@@ -83,9 +88,14 @@ int bxf_context_addarena(bxf_context ctx, bxf_arena arena)
     elt = bxf_arena_ptr(ctx->arena, p);
 
     elt->tag    = BXFI_TAG_ARENA;
-    elt->handle = arena->handle;
     elt->flags  = arena->flags;
     elt->base   = arena->flags & BXF_ARENA_IDENTITY ? arena : NULL;
+
+#ifdef BXF_ARENA_REOPEN_SHM
+    strcpy(elt->name, arena->name);
+#else
+    elt->handle = arena->handle;
+#endif
     return 0;
 }
 
@@ -225,11 +235,13 @@ static int prepare_elt(void *ptr, size_t size, void *user)
 
             memcpy(elt->data, addr, elt->size);
         } break;
+#ifndef BXF_ARENA_REOPEN_SHM
         case BXFI_TAG_ARENA: {
             struct bxfi_ctx_arena *elt = ptr;
             if (ctx->fn)
                 return ctx->fn(elt->handle, ctx->user);
         } break;
+#endif
         case BXFI_TAG_FHANDLE: {
             struct bxfi_ctx_fhandle *elt = ptr;
             if (ctx->fn)
@@ -277,15 +289,36 @@ static int inherit_elt(void *ptr, size_t size, void *user)
         case BXFI_TAG_ARENA: {
             struct bxfi_ctx_arena *elt = ptr;
             bxf_arena arena = elt->base;
-            bxfi_arena_inherit(elt->handle, elt->flags, &arena);
+
+#ifdef BXF_ARENA_REOPEN_SHM
+            int hndl = shm_open(elt->name, O_RDONLY, 0600);
+            if (hndl < 0)
+                return -errno;
+#else
+            bxf_fhandle hndl = elt->handle;
+#endif
+            bxfi_arena_inherit(hndl, elt->flags, &arena);
         } break;
         default: break;
     }
     return 0;
 }
 
-int bxfi_context_inherit(bxf_fhandle hndl)
+int bxfi_context_inherit(struct bxfi_ctx_arena *ctx)
 {
+#ifdef BXF_ARENA_REOPEN_SHM
+    if (!ctx->name[0])
+        return 0;
+
+    int hndl = shm_open(ctx->name, O_RDONLY, 0600);
+    if (hndl < 0)
+        return -errno;
+#else
+    bxf_fhandle hndl = ctx->handle;
+    if (!hndl)
+        return 0;
+#endif
+
     bxf_arena arena = NULL;
     int rc = bxfi_arena_inherit(hndl, 0, &arena);
     if (rc < 0)

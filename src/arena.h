@@ -30,7 +30,7 @@
 # include <stdint.h>
 
 # include "boxfort.h"
-# include "sandbox.h"
+# include "config.h"
 
 struct bxfi_arena_chunk {
     intptr_t addr;
@@ -38,12 +38,22 @@ struct bxfi_arena_chunk {
     intptr_t next;
 };
 
+# ifdef BXF_ARENA_REOPEN_SHM
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena__") + 31)
+# else
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena_") + 11)
+# endif
+
 struct bxf_arena {
     void *addr;
     size_t size;
     intptr_t free_chunks;
     int flags;
     bxf_fhandle handle;
+
+# ifdef BXF_ARENA_REOPEN_SHM
+    char name[BXFI_ARENA_NAME_SIZE];
+# endif
 };
 
 int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena);

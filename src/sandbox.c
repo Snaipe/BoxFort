@@ -46,9 +46,8 @@ static int bxfi_main(void)
     if (!fn)
         abort();
 
-    if (local_ctx.ctx->context)
-        if (bxfi_context_inherit(local_ctx.ctx->context) < 0)
-            abort();
+    if (bxfi_context_inherit(&local_ctx.ctx->context) < 0)
+        abort();
 
     if (bxfi_term_sandbox_ctx(&local_ctx) < 0)
         abort();
