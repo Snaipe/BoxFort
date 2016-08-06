@@ -36,10 +36,17 @@
 # include <sys/mman.h>
 # include <sys/stat.h>
 # include <unistd.h>
+
+# include "timestamp.h"
 #endif
 
 #define PAGE_SIZE 4096
 #define GROWTH_RATIO (1.61)
+#define MAP_RETRIES 3
+
+static unsigned int mmap_seed;
+static void *mmap_base = (void*) ((uintptr_t)1 << (sizeof (void *) * 8 - 3));
+static intptr_t mmap_off = ((intptr_t)1 << ((sizeof (void *) / 2) * 8));
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -95,12 +102,34 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     if (ftruncate(fd, initial) == -1)
         goto error;
 
-    void *base = (void*) ((uintptr_t)1 << (sizeof (void *) * 8 - 2));
-    struct bxf_arena *a = mmap(base, initial,
-            PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (!mmap_seed)
+        mmap_seed = bxfi_timestamp_monotonic();
 
-    if (a == MAP_FAILED)
+    intptr_t r;
+    struct bxf_arena *a;
+    int tries = 0;
+
+    for (tries = 0; tries < MAP_RETRIES; ) {
+        r = rand_r(&mmap_seed);
+
+        void *base = ptr_add(mmap_base, r * mmap_off);
+        if ((intptr_t)base < 0 || (void*)base < mmap_base)
+            continue;
+
+        a = mmap(base, initial,
+                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+        if (a == MAP_FAILED)
+            goto error;
+
+        if ((intptr_t)a > 0 && (void*)a > mmap_base)
+            break;
+        munmap(a, initial);
+        ++tries;
+    }
+    if (tries == MAP_RETRIES)
         goto error;
+
 #endif
 
     a->flags = flags;
