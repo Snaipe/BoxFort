@@ -389,7 +389,7 @@ static int setup_limits(bxf_sandbox *sandbox)
     return 0;
 }
 
-static int nocloexec_fd(bxfi_fhandle fd, void *ctx)
+static int nocloexec_fd(bxf_fhandle fd, void *ctx)
 {
     (void) ctx;
 
@@ -403,7 +403,7 @@ static int nocloexec_fd(bxfi_fhandle fd, void *ctx)
     return 0;
 }
 
-static int inherit_fd(bxfi_fhandle fd, void *ctx)
+static int inherit_fd(bxf_fhandle fd, void *ctx)
 {
     int rc = nocloexec_fd(fd, NULL);
     if (rc < 0)

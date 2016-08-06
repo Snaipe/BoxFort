@@ -183,7 +183,7 @@ error:;
 #endif
 }
 
-int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena)
+int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena)
 {
     void *base = NULL;
     if (flags & BXF_ARENA_IDENTITY)

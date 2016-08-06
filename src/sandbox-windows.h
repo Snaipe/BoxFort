@@ -26,12 +26,10 @@
 
 # include <windows.h>
 
-typedef HANDLE bxfi_fhandle;
-
 struct bxfi_context {
     size_t total_sz;
     const void *fn;
-    bxfi_fhandle context;
+    bxf_fhandle context;
     size_t fn_soname_sz;
     HANDLE sync;
 };

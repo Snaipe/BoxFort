@@ -43,9 +43,9 @@ struct bxf_arena {
     size_t size;
     intptr_t free_chunks;
     int flags;
-    bxfi_fhandle handle;
+    bxf_fhandle handle;
 };
 
-int bxfi_arena_inherit(bxfi_fhandle hndl, int flags, bxf_arena *arena);
+int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena);
 
 #endif /* !ARENA_H_ */

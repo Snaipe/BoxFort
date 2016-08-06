@@ -49,7 +49,7 @@ struct bxfi_ctx_arena {
     enum bxfi_ctx_tag tag;
     int flags;
     void *base;
-    bxfi_fhandle handle;
+    bxf_fhandle handle;
 };
 
 struct bxfi_ctx_object {
@@ -60,13 +60,13 @@ struct bxfi_ctx_object {
 
 struct bxfi_ctx_fhandle {
     enum bxfi_ctx_tag tag;
-    bxfi_fhandle handle;
+    bxf_fhandle handle;
 };
 
-typedef int (bxfi_fhandle_fn)(bxfi_fhandle, void *);
+typedef int (bxf_fhandle_fn)(bxf_fhandle, void *);
 
-bxfi_fhandle bxfi_context_gethandle(bxf_context ctx);
-int bxfi_context_prepare(bxf_context ctx, bxfi_fhandle_fn *fn, void *user);
-int bxfi_context_inherit(bxfi_fhandle hndl);
+bxf_fhandle bxfi_context_gethandle(bxf_context ctx);
+int bxfi_context_prepare(bxf_context ctx, bxf_fhandle_fn *fn, void *user);
+int bxfi_context_inherit(bxf_fhandle hndl);
 
 #endif /* !CONTEXT_H_ */

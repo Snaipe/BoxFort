@@ -28,12 +28,10 @@
 # include <stddef.h>
 # include <stdint.h>
 
-typedef int bxfi_fhandle;
-
 struct bxfi_context {
     size_t total_sz;
     const void *fn;
-    bxfi_fhandle context;
+    bxf_fhandle context;
     size_t fn_soname_sz;
     int ok;
 };

@@ -253,7 +253,7 @@ static void prepare_ctx_term(struct bxfi_prepare_ctx *ctx)
     ctx->capacity = 0;
 }
 
-static int do_inherit_handle(bxfi_fhandle handle, void *user)
+static int do_inherit_handle(bxf_fhandle handle, void *user)
 {
     struct bxfi_prepare_ctx *ctx = user;
     if (!ctx->handles) {

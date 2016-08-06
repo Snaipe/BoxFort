@@ -195,13 +195,13 @@ int bxf_context_term(bxf_context ctx)
     return rc;
 }
 
-bxfi_fhandle bxfi_context_gethandle(bxf_context ctx)
+bxf_fhandle bxfi_context_gethandle(bxf_context ctx)
 {
     return ctx->arena->handle;
 }
 
 struct bxfi_prepare_ctx {
-    bxfi_fhandle_fn *fn;
+    bxf_fhandle_fn *fn;
     void *user;
 };
 
@@ -240,7 +240,7 @@ static int prepare_elt(void *ptr, size_t size, void *user)
     return 0;
 }
 
-int bxfi_context_prepare(bxf_context ctx, bxfi_fhandle_fn *fn, void *user)
+int bxfi_context_prepare(bxf_context ctx, bxf_fhandle_fn *fn, void *user)
 {
     struct bxfi_prepare_ctx uctx = {
         .fn = fn,
@@ -284,7 +284,7 @@ static int inherit_elt(void *ptr, size_t size, void *user)
     return 0;
 }
 
-int bxfi_context_inherit(bxfi_fhandle hndl)
+int bxfi_context_inherit(bxf_fhandle hndl)
 {
     bxf_arena arena = NULL;
     int rc = bxfi_arena_inherit(hndl, 0, &arena);
