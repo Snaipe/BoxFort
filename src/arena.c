@@ -44,9 +44,21 @@
 #define GROWTH_RATIO (1.61)
 #define MAP_RETRIES 3
 
+#if BXF_BITS == 32
+# define SPTR 4
+static void *mmap_max = (void *)0xf0000000;
+#elif BXF_BITS == 64
+# define SPTR 6
+
+/* On Linux it seems that you cannot map > 48-bit addresses */
+static void *mmap_max = (void *)0x7f0000000000;
+#else
+# error Platform not supported
+#endif
+
 static unsigned int mmap_seed;
-static void *mmap_base = (void*) ((uintptr_t)1 << (sizeof (void *) * 8 - 3));
-static intptr_t mmap_off = ((intptr_t)1 << ((sizeof (void *) / 2) * 8));
+static void *mmap_base = (void*) ((uintptr_t)1 << (SPTR * 8 - 3));
+static intptr_t mmap_off = ((intptr_t)1 << ((SPTR / 2) * 8));
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -109,23 +121,31 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     struct bxf_arena *a;
     int tries = 0;
 
-    for (tries = 0; tries < MAP_RETRIES; ) {
+    for (tries = 0; tries < MAP_RETRIES;) {
         r = rand_r(&mmap_seed);
 
         void *base = ptr_add(mmap_base, r * mmap_off);
-        if ((intptr_t)base < 0 || (void*)base < mmap_base)
+        if (base > mmap_max || base < mmap_base)
             continue;
 
-        a = mmap(base, initial,
-                PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        for (void *addr = base; addr < ptr_add(base, initial);
+                addr = ptr_add(addr, PAGE_SIZE)) {
+            int rc = msync(addr, PAGE_SIZE, 0);
+            if (rc != -1 || errno != ENOMEM)
+                goto retry;
+        }
+
+        a = mmap(base, initial, PROT_READ | PROT_WRITE,
+                MAP_SHARED | MAP_FIXED, fd, 0);
 
         if (a == MAP_FAILED)
             goto error;
 
-        if ((intptr_t)a > 0 && (void*)a > mmap_base)
+        if ((void *)a < mmap_max && (void *)a > mmap_base)
             break;
         munmap(a, initial);
         ++tries;
+retry:;
     }
     if (tries == MAP_RETRIES)
         goto error;
