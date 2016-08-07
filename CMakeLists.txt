@@ -75,6 +75,8 @@ option (USE_QEMU "Use QEMU to run the tests" OFF)
 option (BXF_ARENA_REOPEN_SHM "Reopen the arena shm in child processes (POSIX)" OFF)
 option (BXF_ARENA_FILE_BACKED "Arena memory is file-backed (POSIX)" OFF)
 option (BXF_STATIC_LIB "Build a static library" OFF)
+option (BXF_SAMPLES "Build the library samples" ON)
+option (BXF_TESTS "Build the library tests" ON)
 
 # Assume ELF on POSIX initially, override values when needed
 set (BXF_EXE_FORMAT elf)
@@ -207,6 +209,11 @@ function (add_boxfort_test _NAME)
 endfunction ()
 
 enable_testing ()
-add_subdirectory (test)
-add_subdirectory (sample)
+if (BXF_TESTS)
+  add_subdirectory (test)
+endif ()
+
+if (BXF_SAMPLES)
+  add_subdirectory (sample)
+endif ()
 
