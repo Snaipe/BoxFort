@@ -53,6 +53,9 @@ struct bxfi_sandbox {
      * Only used to calculate more accurate run times */
     uint64_t start_monotonic;
 
+    void *user;
+    bxf_dtor *user_dtor;
+
     HANDLE waited;
 };
 

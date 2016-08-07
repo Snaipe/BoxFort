@@ -287,7 +287,8 @@ static int do_inherit_handle(bxf_fhandle handle, void *user)
 }
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
+        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
+        void *user, bxf_dtor user_dtor)
 {
     int errnum = 0;
     struct bxfi_sandbox *instance = NULL;
@@ -308,6 +309,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (!instance)
         goto error;
     instance->mantled = mantled;
+    instance->user = user;
+    instance->user_dtor = user_dtor;
 
     instance->waited = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!instance->waited)
@@ -450,6 +453,7 @@ file_not_found:
         .pid = info.dwProcessId,
         .status.alive = 1,
         .time.start = ts_start,
+        .user = instance->user,
     };
 
     instance->start_monotonic = mts_start;
@@ -531,6 +535,8 @@ error:
 int bxf_term(bxf_instance *instance)
 {
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    if (sb->user && sb->user_dtor)
+        sb->user_dtor(instance, sb->user);
     if (sb->mantled)
         free((void *) instance->sandbox);
     CloseHandle(sb->proc);

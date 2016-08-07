@@ -61,6 +61,8 @@ struct bxfi_sandbox {
     pthread_mutex_t sync;
     pthread_cond_t cond;
     bxf_callback *callback;
+    void *user;
+    bxf_dtor *user_dtor;
     struct bxfi_sandbox *next;
 };
 

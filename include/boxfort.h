@@ -192,17 +192,22 @@ struct bxf_instance {
         uint64_t end;
         uint64_t elapsed;
     } time;
+
+    void *user;
 };
 
 typedef const struct bxf_instance bxf_instance;
 
 typedef void (bxf_callback)(bxf_instance *);
 typedef int (bxf_preexec)(bxf_instance *);
+typedef void (bxf_dtor)(bxf_instance *, void *);
 
 struct bxf_spawn_params {
     int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
+    void *user;
+    bxf_dtor *user_dtor;
     bxf_callback *callback;
     BXFI_SANDBOX_FIELDS
 };
@@ -213,6 +218,8 @@ struct bxf_start_params {
     int bxfi_sentinel_; /* Reserved */
     bxf_fn *fn;
     bxf_preexec *preexec;
+    void *user;
+    bxf_dtor *user_dtor;
     bxf_callback *callback;
 };
 

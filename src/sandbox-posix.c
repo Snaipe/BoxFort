@@ -557,7 +557,8 @@ static int find_exe(const char *progname, char *out, size_t size)
 }
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
-        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
+        int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
+        void *user, bxf_dtor user_dtor)
 {
     static char exe[PATH_MAX + 1];
     static pthread_once_t atfork = PTHREAD_ONCE_INIT;
@@ -587,6 +588,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     *instance = (struct bxfi_sandbox) {
         .mantled = mantled,
         .callback = callback,
+        .user = user,
+        .user_dtor = user_dtor,
     };
     if ((errnum = -pthread_mutex_init(&instance->sync, NULL)))
         goto err;
@@ -605,6 +608,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             .pid = pid,
             .status.alive = 1,
             .time.start = bxfi_timestamp(),
+            .user = instance->user,
         };
 
         if ((pid = wait_stop(pid)) <= 0) {
@@ -768,6 +772,9 @@ int bxf_term(bxf_instance *instance)
         prev = &s->next;
     }
     pthread_mutex_unlock(&self.sync);
+
+    if (sb->user && sb->user_dtor)
+        sb->user_dtor(instance, sb->user);
 
     if (sb->mantled)
         free((void *) instance->sandbox);

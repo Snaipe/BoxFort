@@ -80,7 +80,8 @@ int bxf_spawn_struct(bxf_instance **out, bxf_spawn_params params)
 
     int rc;
     if ((rc = bxfi_exec(out, sandbox, 1, params->fn,
-            params->preexec, params->callback)))
+            params->preexec, params->callback,
+            params->user, params->user_dtor)))
         free(sandbox);
     return rc;
 }
@@ -101,5 +102,6 @@ int bxf_start_struct(bxf_instance **out, bxf_sandbox *sandbox,
         bxf_start_params params)
 {
     return bxfi_exec(out, sandbox, 0, params->fn,
-            params->preexec, params->callback);
+            params->preexec, params->callback,
+            params->user, params->user_dtor);
 }
