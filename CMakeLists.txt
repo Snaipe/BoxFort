@@ -74,6 +74,7 @@ endif ()
 option (USE_QEMU "Use QEMU to run the tests" OFF)
 option (BXF_ARENA_REOPEN_SHM "Reopen the arena shm in child processes (POSIX)" OFF)
 option (BXF_ARENA_FILE_BACKED "Arena memory is file-backed (POSIX)" OFF)
+option (BXF_STATIC_LIB "Build a static library" OFF)
 
 # Assume ELF on POSIX initially, override values when needed
 set (BXF_EXE_FORMAT elf)
@@ -155,7 +156,11 @@ list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 include_directories(include src ${CMAKE_CURRENT_BINARY_DIR}/src)
 add_subdirectory (src)
 
-add_library (boxfort SHARED ${SOURCE_FILES})
+if (BXF_STATIC_LIB)
+  add_library (boxfort STATIC ${SOURCE_FILES})
+else ()
+  add_library (boxfort SHARED ${SOURCE_FILES})
+endif ()
 
 if (HAVE_LIBRT)
   target_link_libraries(boxfort rt)
