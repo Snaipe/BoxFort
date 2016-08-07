@@ -141,10 +141,31 @@ struct bxf_inheritance {
     bxf_context context;
 };
 
+enum bxf_debugger {
+    BXF_DBG_NONE,   /* Do not debug the sandbox */
+    BXF_DBG_GDB,    /* Spawn with gdbserver */
+    BXF_DBG_LLDB,   /* Spawn with lldb-server */
+    BXF_DBG_WINDBG, /* Spawn with windbg (Windows only) */
+};
+
+# if defined (__clang__)
+#  define BXF_DBG_NATIVE BXF_DBG_LLDB
+# elif defined (__GNUC__)
+#  define BXF_DBG_NATIVE BXF_DBG_GDB
+# elif defined (_WIN32)
+#  define BXF_DBG_NATIVE BXF_DBG_WINDBG
+# endif
+
+struct bxf_debug {
+    enum bxf_debugger debugger;
+    int tcp;
+};
+
 # define BXFI_SANDBOX_FIELDS        \
     struct bxf_quotas quotas;       \
     struct bxf_quotas iquotas;      \
-    struct bxf_inheritance inherit;
+    struct bxf_inheritance inherit; \
+    struct bxf_debug debug;
 
 struct bxf_sandbox {
     BXFI_SANDBOX_FIELDS

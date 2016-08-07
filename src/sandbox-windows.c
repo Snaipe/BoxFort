@@ -370,9 +370,73 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     uint64_t ts_start = bxfi_timestamp();
     uint64_t mts_start = bxfi_timestamp_monotonic();
 
-    success = CreateProcess(filename, TEXT("boxfort-worker"),
-            NULL, NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-            NULL, NULL, &si.StartupInfo, &info);
+    if (sandbox->debug.debugger) {
+        TCHAR *dbg = NULL;
+        TCHAR *cmdline = NULL;
+
+        switch (sandbox->debug.debugger) {
+            case BXF_DBG_WINDBG: {
+                dbg = TEXT("gdbserver");
+                TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s");
+
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                cmdline = malloc(sizeof (TCHAR) * size);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+            } break;
+            case BXF_DBG_GDB: {
+                dbg = TEXT("gdbserver");
+                TCHAR *fmt = TEXT("boxfort-worker tcp:%d %s");
+
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                cmdline = malloc(sizeof (TCHAR) * size);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+            } break;
+            case BXF_DBG_LLDB: {
+                dbg = TEXT("lldb-server");
+                TCHAR *fmt = TEXT("boxfort-worker gdbserver *:%d %s");
+
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                cmdline = malloc(sizeof (TCHAR) * size);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+            } break;
+            default:
+                errnum = -EINVAL;
+                goto error;
+        }
+
+        DWORD pathsz = GetEnvironmentVariable(TEXT("PATH"), NULL, 0);
+        TCHAR *path = malloc(pathsz * sizeof (TCHAR));
+        TCHAR *dbg_full = NULL;
+
+        pathsz = SearchPath(path, dbg, TEXT(".exe"), 0, NULL, NULL);
+        if (!pathsz)
+            goto file_not_found;
+
+        dbg_full = malloc(pathsz * sizeof (TCHAR));
+        pathsz = SearchPath(path, dbg, TEXT(".exe"), pathsz, dbg_full, NULL);
+
+        if (!pathsz) {
+file_not_found:
+            fprintf(stderr, "Could not start debugger: File not found.\n");
+            free(dbg_full);
+            free(path);
+            free(cmdline);
+            errnum = -ENOENT;
+            goto error;
+        }
+
+        success = CreateProcess(dbg_full, cmdline, NULL,
+                NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
+                NULL, NULL, &si.StartupInfo, &info);
+
+        free(dbg_full);
+        free(path);
+        free(cmdline);
+    } else {
+        success = CreateProcess(filename, TEXT("boxfort-worker"), NULL,
+                NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
+                NULL, NULL, &si.StartupInfo, &info);
+    }
 
     errnum = -EPROTO;
     if (!success)

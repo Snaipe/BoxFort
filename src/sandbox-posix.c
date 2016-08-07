@@ -34,6 +34,7 @@
 #include <sys/mman.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 
 #if defined(HAVE_CLOCK_GETTIME)
@@ -212,10 +213,17 @@ static void bxfi_unmap_local_ctx(struct bxfi_map *map)
 
 int bxfi_check_sandbox_ctx(void)
 {
-    char name[sizeof ("bxfi_") + 21];
-    snprintf(name, sizeof (name), "bxfi_%d", getpid());
+    char name[sizeof ("bxfi_") + 21] = "/bxf_dbg";
 
     int fd = shm_open(name, O_RDONLY, 0600);
+    if (fd != -1) {
+        close(fd);
+        return 1;
+    }
+
+    snprintf(name, sizeof (name), "bxfi_%d", getpid());
+
+    fd = shm_open(name, O_RDONLY, 0600);
     if (fd != -1)
         close(fd);
     return fd != -1;
@@ -223,10 +231,15 @@ int bxfi_check_sandbox_ctx(void)
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    char name[sizeof ("bxfi_") + 21];
-    snprintf(name, sizeof (name), "bxfi_%d", getpid());
+    char name[sizeof ("bxfi_") + 21] = "/bxf_dbg";
 
     int fd = shm_open(name, O_RDWR, 0600);
+    if (fd == -1) {
+        snprintf(name, sizeof (name), "bxfi_%d", getpid());
+
+        fd = shm_open(name, O_RDWR, 0600);
+    }
+
     if (fd == -1)
         goto error;
 
@@ -521,6 +534,28 @@ static void term_child_pump(void)
     }
 }
 
+static int find_exe(const char *progname, char *out, size_t size)
+{
+    char *sptr;
+
+    char *path = strdup(getenv("PATH"));
+    char *p = strtok_r(path, ":", &sptr);
+
+    while ((p = strtok_r(NULL, ":", &sptr))) {
+        snprintf(out, size, "%s/%s", *p ? p : ".", progname);
+
+        struct stat sb;
+        int rc = stat(out, &sb);
+        if (!rc && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode)))
+            break;
+    }
+
+    free(path);
+    if (!p)
+        return -ENOENT;
+    return 0;
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback)
 {
@@ -577,7 +612,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             goto err;
         }
 
-        snprintf(map_name, sizeof (map_name), "bxfi_%d", pid);
+        if (sandbox->debug.debugger)
+            strcpy(map_name, "/bxf_dbg");
+        else
+            snprintf(map_name, sizeof (map_name), "bxfi_%d", pid);
 
         size_t len = strlen(addr.soname);
 
@@ -657,7 +695,46 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     raise(SIGSTOP);
 
-    execl(exe, "boxfort-worker", NULL);
+    if (sandbox->debug.debugger) {
+        const char *dbg = NULL;
+        char *argv[16];
+        char port[11];
+
+        switch (sandbox->debug.debugger) {
+            case BXF_DBG_GDB:
+                dbg = "gdbserver";
+                argv[0] = "boxfort-worker";
+                argv[1] = port;
+                argv[2] = exe;
+                argv[3] = NULL;
+
+                snprintf(port, sizeof (port), "tcp:%d", sandbox->debug.tcp);
+                break;
+            case BXF_DBG_LLDB:
+                dbg = "lldb-server";
+                argv[0] = "boxfort-worker";
+                argv[1] = "gdbserver";
+                argv[2] = port;
+                argv[3] = exe;
+                argv[4] = NULL;
+
+                snprintf(port, sizeof (port), "*:%d", sandbox->debug.tcp);
+                break;
+            default:
+                fprintf(stderr, "Could not start debugger: Unknown debugger.\n");
+                abort();
+        };
+
+        char dbg_full[PATH_MAX];
+        if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0) {
+            fprintf(stderr, "Could not start debugger: File not found.\n");
+            abort();
+        }
+
+        execv(dbg_full, argv);
+    } else {
+        execl(exe, "boxfort-worker", NULL);
+    }
     _exit(errno);
 
 err:
