@@ -183,6 +183,17 @@ if (CMAKE_THREAD_LIBS_INIT)
   target_link_libraries(boxfort "${CMAKE_THREAD_LIBS_INIT}")
 endif ()
 
+foreach (F ${INTERFACE_FILES})
+  get_filename_component(DEST "${F}" PATH)
+  install(FILES "${F}" DESTINATION "${DEST}" ${install_flags})
+endforeach ()
+
+install(TARGETS boxfort
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+
 add_custom_target(boxfort_tests ALL)
 
 function (add_boxfort_sample _NAME)

@@ -25,9 +25,14 @@ set (SOURCE_FILES ${ASM_FILES}
     src/timestamp.h
 )
 
+set (INTERFACE_FILES
+    include/boxfort.h
+)
+
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/config.h"
 )
 
 set (SOURCE_FILES ${SOURCE_FILES} PARENT_SCOPE)
+set (INTERFACE_FILES ${INTERFACE_FILES} PARENT_SCOPE)
