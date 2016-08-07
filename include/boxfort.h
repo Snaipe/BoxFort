@@ -136,8 +136,8 @@ struct bxf_quotas {
 };
 
 struct bxf_inheritance {
-    int files   : 1;
-    int data    : 1;
+    unsigned files   : 1;
+    unsigned data    : 1;
     bxf_context context;
 };
 

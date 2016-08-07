@@ -25,11 +25,12 @@
 # define SANDBOX_WINDOWS_H_
 
 # include <windows.h>
+# include "context.h"
 
 struct bxfi_context {
     size_t total_sz;
     const void *fn;
-    bxf_fhandle context;
+    struct bxfi_ctx_arena context;
     size_t fn_soname_sz;
     HANDLE sync;
 };

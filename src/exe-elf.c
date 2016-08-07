@@ -187,7 +187,7 @@ static ElfW(Sym) *dynsym_lookup(bxfi_exe_lib lib, const char *name)
     return elf_hash_find (hash, symtab, strtab, name);
 }
 
-extern bxfi_exe_fn main;
+extern int main(void);
 
 static void *get_main_addr(bxfi_exe_ctx ctx)
 {

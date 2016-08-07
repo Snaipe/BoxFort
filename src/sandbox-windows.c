@@ -378,7 +378,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (!success)
         goto error;
 
-    DeleteProcThreadAttributeList(si.lpAttributeList);
+    if (si.lpAttributeList)
+        DeleteProcThreadAttributeList(si.lpAttributeList);
 
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,
@@ -413,7 +414,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     map.ctx->sync = sync;
     map.ctx->fn = addr.addr;
     if (ictx)
-        map.ctx->context = bxfi_context_gethandle(ictx);
+        map.ctx->context.handle = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);
     map.ctx->fn_soname_sz = len + 1;
 
