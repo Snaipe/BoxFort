@@ -13,3 +13,4 @@ Testing if the context sample behave as expected
 
   $ context.c.bin
   my_int = 42
+  my_long = 24
