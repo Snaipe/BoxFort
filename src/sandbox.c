@@ -65,7 +65,7 @@ static void patch_main(void)
         abort();
 }
 
-int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
+int bxf_spawn_struct(bxf_instance **out, bxf_spawn_params params)
 {
     if (!params->fn)
         return -EINVAL;
@@ -85,11 +85,11 @@ int bxf_spawn_impl(bxf_instance **out, bxf_spawn_params params)
     return rc;
 }
 
-int bxf_run_impl(bxf_spawn_params params)
+int bxf_run_struct(bxf_spawn_params params)
 {
     bxf_instance *box;
     int rc;
-    if ((rc = bxf_spawn_impl(&box, params)))
+    if ((rc = bxf_spawn_struct(&box, params)))
         return rc;
 
     rc = bxf_wait(box, BXF_FOREVER);
@@ -97,7 +97,7 @@ int bxf_run_impl(bxf_spawn_params params)
     return rc;
 }
 
-int bxf_start_impl(bxf_instance **out, bxf_sandbox *sandbox,
+int bxf_start_struct(bxf_instance **out, bxf_sandbox *sandbox,
         bxf_start_params params)
 {
     return bxfi_exec(out, sandbox, 0, params->fn,

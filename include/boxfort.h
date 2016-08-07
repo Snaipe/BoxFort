@@ -197,21 +197,21 @@ struct bxf_start_params {
 
 typedef const struct bxf_start_params *bxf_start_params;
 
-# define bxf_start(Instance, Sandbox, ...) (bxf_start_impl((Instance), \
+# define bxf_start(Instance, Sandbox, ...) (bxf_start_struct((Instance), \
             (Sandbox), \
             &(struct bxf_start_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_start_impl(bxf_instance **instance,
+int bxf_start_struct(bxf_instance **instance,
         bxf_sandbox *sandbox, bxf_start_params params);
 
 int bxf_term(bxf_instance *instance);
 int bxf_wait(bxf_instance *instance, double timeout);
 
-# define bxf_spawn(Instance, ...) (bxf_spawn_impl((Instance), \
+# define bxf_spawn(Instance, ...) (bxf_spawn_struct((Instance), \
             &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_spawn_impl(bxf_instance **instance, bxf_spawn_params params);
+int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
 
-# define bxf_run(...) (bxf_run_impl( \
+# define bxf_run(...) (bxf_run_struct( \
             &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_run_impl(bxf_spawn_params params);
+int bxf_run_struct(bxf_spawn_params params);
 
 #endif /* !BOXFORT_H_ */
