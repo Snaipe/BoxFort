@@ -136,7 +136,7 @@ static int find_obj(void *ptr, size_t size, void *user)
 
     struct bxfi_ctx_object *obj = ptr;
     if (!strcmp(obj->data, ctx->name)) {
-        ctx->result = ptr;
+        ctx->result = &obj->data[obj->namesz];
         return 1;
     }
     return 0;
@@ -308,6 +308,8 @@ static int inherit_elt(void *ptr, size_t size, void *user)
     return 0;
 }
 
+static struct bxf_context current_ctx;
+
 int bxfi_context_inherit(struct bxfi_ctx_arena *ctx)
 {
 #ifdef BXF_ARENA_REOPEN_SHM
@@ -332,5 +334,13 @@ int bxfi_context_inherit(struct bxfi_ctx_arena *ctx)
     if (rc < 0)
         return rc;
 
+    current_ctx.arena = arena;
     return bxf_arena_iter(arena, inherit_elt, NULL);
+}
+
+bxf_context bxf_context_current(void)
+{
+    if (!current_ctx.arena)
+        return NULL;
+    return &current_ctx;
 }

@@ -17,7 +17,13 @@ static int *my_int;
 
 static int child(void)
 {
+    bxf_context ctx = bxf_context_current();
+
+    long *my_long = NULL;
+    bxf_context_getobject(ctx, "long_id", (void **)&my_long);
+
     printf("my_int = %d\n", *my_int);
+    printf("my_long = %ld\n", *my_long);
     return 0;
 }
 
@@ -41,6 +47,9 @@ EXPORT int main(void)
 
     my_int = bxf_arena_ptr(arena, intp);
     *my_int = 42;
+
+    long my_long = 24;
+    _assert(!bxf_context_addobject(ctx, "long_id", &my_long, sizeof (my_long)));
 
     /* We run the child function with the created context */
     _assert(!bxf_run(child, .inherit.context = ctx));

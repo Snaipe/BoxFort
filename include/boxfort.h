@@ -123,6 +123,8 @@ int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);
 
 int bxf_context_getfile(bxf_context ctx, const char *name, FILE **file);
 
+bxf_context bxf_context_current(void);
+
 /* Sandbox API */
 
 typedef unsigned long long bxf_pid;
