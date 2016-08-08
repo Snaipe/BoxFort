@@ -108,11 +108,23 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
     if (!s->props.status.alive && s->callback)
         s->callback(&s->props);
 
-    s->waited = 1;
-    pthread_cond_broadcast(&s->cond);
     pthread_mutex_unlock(&s->sync);
 
     return s;
+}
+
+static void remove_alive_by_pid(bxf_pid pid)
+{
+    struct bxfi_sandbox **prev = &self.alive;
+    for (struct bxfi_sandbox *s = self.alive; s; s = s->next) {
+        if (s->props.pid == pid) {
+            *prev = s->next;
+            s->next = self.dead;
+            self.dead = s;
+            break;
+        }
+        prev = &s->next;
+    }
 }
 
 static void *child_pump_fn(void *nil)
@@ -149,25 +161,22 @@ static void *child_pump_fn(void *nil)
             if (!instance)
                 continue;
 
+            int alive;
             pthread_mutex_lock(&self.sync);
-            struct bxfi_sandbox **prev = &self.alive;
-            for (struct bxfi_sandbox *s = self.alive; s; s = s->next) {
-                if (s->props.pid == (bxf_pid) infop.si_pid) {
-                    *prev = s->next;
-                    s->next = self.dead;
-                    self.dead = s;
-                    break;
-                }
-                prev = &s->next;
-            }
-            if (!self.alive)
-                goto end;
+            remove_alive_by_pid((bxf_pid) infop.si_pid);
+            alive = !!self.alive;
             pthread_mutex_unlock(&self.sync);
+
+            pthread_mutex_lock(&instance->sync);
+            instance->waited = 1;
+            pthread_cond_broadcast(&instance->cond);
+            pthread_mutex_unlock(&instance->sync);
+
+            if (!alive)
+                goto end;
         }
     }
-    pthread_mutex_lock(&self.sync);
 end:
-    pthread_mutex_unlock(&self.sync);
     return nil;
 }
 
@@ -765,17 +774,24 @@ int bxf_term(bxf_instance *instance)
         return -EINVAL;
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
-    struct bxfi_sandbox **prev = &self.dead;
+
+    if (!sb->waited)
+        return -EINVAL;
 
     pthread_mutex_lock(&self.sync);
+    struct bxfi_sandbox **prev = &self.dead;
+    int ok = 0;
     for (struct bxfi_sandbox *s = self.dead; s; s = s->next) {
         if (s == sb) {
             *prev = s->next;
+            ok = 1;
             break;
         }
         prev = &s->next;
     }
     pthread_mutex_unlock(&self.sync);
+    if (!ok)
+        return -EINVAL;
 
     if (sb->user && sb->user_dtor)
         sb->user_dtor(instance, sb->user);
