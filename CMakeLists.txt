@@ -77,6 +77,7 @@ option (BXF_ARENA_FILE_BACKED "Arena memory is file-backed (POSIX)" OFF)
 option (BXF_STATIC_LIB "Build a static library" OFF)
 option (BXF_SAMPLES "Build the library samples" ON)
 option (BXF_TESTS "Build the library tests" ON)
+option (BXF_FORK_RESILIENCE "Build with fork resilience" ON)
 
 # Assume ELF on POSIX initially, override values when needed
 set (BXF_EXE_FORMAT elf)

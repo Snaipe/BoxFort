@@ -469,6 +469,7 @@ static int setup_inheritance(bxf_sandbox *sandbox)
     return 0;
 }
 
+#ifdef BXF_FORK_RESILIENCE
 static void prefork(void)
 {
     pthread_mutex_lock(&self.sync);
@@ -511,6 +512,7 @@ static void init_atfork(void)
 {
     pthread_atfork(prefork, postfork_parent, postfork_child);
 }
+#endif
 
 static void init_child_pump(pid_t pid)
 {
@@ -561,9 +563,11 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         void *user, bxf_dtor user_dtor)
 {
     static char exe[PATH_MAX + 1];
-    static pthread_once_t atfork = PTHREAD_ONCE_INIT;
 
+#ifdef BXF_FORK_RESILIENCE
+    static pthread_once_t atfork = PTHREAD_ONCE_INIT;
     pthread_once(&atfork, init_atfork);
+#endif
 
     char map_name[sizeof ("bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
