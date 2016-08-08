@@ -790,9 +790,6 @@ int bxf_term(bxf_instance *instance)
 
 int bxf_wait(bxf_instance *instance, double timeout)
 {
-    if (!instance->status.alive)
-        return 0;
-
     if (timeout < 0)
         timeout = 0;
 
