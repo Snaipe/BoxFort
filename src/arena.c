@@ -291,7 +291,8 @@ int bxf_arena_term(bxf_arena *arena)
 {
 #ifdef _WIN32
     CloseHandle((*arena)->handle);
-    UnmapViewOfFile(*arena);
+    if (!((*arena)->flags & BXF_ARENA_KEEPMAPPED))
+        UnmapViewOfFile(*arena);
 #else
 # ifdef BXF_ARENA_REOPEN_SHM
 #  ifdef BXF_ARENA_FILE_BACKED
@@ -301,7 +302,8 @@ int bxf_arena_term(bxf_arena *arena)
 # endif
 # endif
     close((*arena)->handle);
-    munmap(*arena, (*arena)->size);
+    if (!((*arena)->flags & BXF_ARENA_KEEPMAPPED))
+        munmap(*arena, (*arena)->size);
 #endif
     *arena = NULL;
     return 0;

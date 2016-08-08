@@ -70,6 +70,16 @@ enum {
      * fault.
      */
     BXF_ARENA_IMMUTABLE = (1 << 4),
+
+    /**
+     * The arena in the parent is not unmapped upon termination. All related
+     * shared memory resources are still cleaned up.
+     *
+     * This is necessary for special languages semantics like C++ destructors
+     * of static objects that assume that the heap is still mapped before
+     * a call free().
+     */
+    BXF_ARENA_KEEPMAPPED = (1 << 5),
 };
 
 typedef intptr_t bxf_ptr;
