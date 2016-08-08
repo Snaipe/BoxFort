@@ -551,7 +551,7 @@ int bxf_wait(bxf_instance *instance, double timeout)
     if (timeout == BXF_FOREVER || !isfinite(timeout))
         dwtimeout = INFINITE;
     else
-        dwtimeout = trunc(timeout * 1000);
+        dwtimeout = timeout * 1000;
 
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
     if (WaitForSingleObject(sb->waited, dwtimeout) != WAIT_OBJECT_0)

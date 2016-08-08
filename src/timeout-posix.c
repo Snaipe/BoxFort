@@ -72,7 +72,7 @@ static void to_timespec(double timeout, struct timespec *timeo)
 {
     static const uint64_t nanosecs = 1000000000;
 
-    uint64_t to_ns = (timeout - trunc(timeout)) * nanosecs;
+    uint64_t to_ns = (timeout - (uint64_t)timeout) * nanosecs;
     uint64_t to_s  = timeout;
 
 #if defined(HAVE_CLOCK_GETTIME)

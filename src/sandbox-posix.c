@@ -794,7 +794,7 @@ int bxf_wait(bxf_instance *instance, double timeout)
 
     static const size_t nanosecs = 1000000000;
 
-    size_t to_ns = (timeout - trunc(timeout)) * nanosecs;
+    size_t to_ns = (timeout - (size_t)timeout) * nanosecs;
     size_t to_s  = timeout;
 
     struct timespec timeo;
