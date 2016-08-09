@@ -74,12 +74,11 @@ static void *lib_dt_lookup(bxfi_exe_lib lib, ElfSWord tag)
 
 static ElfWord lib_dt_lookup_val(bxfi_exe_lib lib, ElfSWord tag)
 {
-    ElfW(Addr) base =(ElfW(Addr)) lib->l_addr;
     for (const ElfW(Dyn) *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
         if (dyn->d_tag == tag)
             return dyn->d_un.d_val;
     }
-    return -1;
+    return (ElfWord) -1;
 }
 
 #if !defined HAVE__R_DEBUG
@@ -289,7 +288,7 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
 
     const char *strtab  = lib_dt_lookup(lib, DT_STRTAB);
     ElfWord soname_off = lib_dt_lookup_val(lib, DT_SONAME);
-    if (!strtab || soname_off == -1)
+    if (!strtab || soname_off == (ElfWord) -1)
         return NULL;
 
     return &strtab[soname_off];
