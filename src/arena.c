@@ -56,9 +56,11 @@ static void *mmap_max = (void *)0x7f0000000000;
 # error Platform not supported
 #endif
 
+#ifndef _WIN32
 static unsigned int mmap_seed;
 static void *mmap_base = (void*) ((uintptr_t)1 << (SPTR * 8 - 3));
 static intptr_t mmap_off = ((intptr_t)1 << ((SPTR / 2) * 8));
+#endif
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -84,7 +86,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 
     /* Reserve whole address space (minus kernel-reserved) for possible max
      * heap size */
-    LARGE_INTEGER sz = { .QuadPart = 1llu << (sizeof (void *) * 8 - 2) };
+    LARGE_INTEGER sz = { .QuadPart = (uintptr_t)mmap_max };
 
     HANDLE hndl = CreateFileMapping(INVALID_HANDLE_VALUE, &inherit,
             PAGE_READWRITE | SEC_RESERVE, sz.HighPart, sz.LowPart, NULL);
