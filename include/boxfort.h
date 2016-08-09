@@ -127,6 +127,14 @@ int bxf_context_addobject(bxf_context ctx, const char *name,
 
 int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr);
 
+int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr);
+
+int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr);
+
+int bxf_context_addfnaddr(bxf_context ctx, const char *name, void (*fn)(void));
+
+int bxf_context_getfnaddr(bxf_context ctx, const char *name, void (**fn)(void));
+
 int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl);
 
 int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);

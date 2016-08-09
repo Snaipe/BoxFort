@@ -151,6 +151,35 @@ int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr)
     return found;
 }
 
+int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr)
+{
+    struct bxfi_addr norm;
+    int rc = bxfi_normalize_addr(addr, &norm);
+    if (rc < 0)
+        return rc;
+
+    return bxf_context_addobject(ctx, name, &norm, sizeof (norm));
+}
+
+int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr)
+{
+    struct bxfi_addr *norm;
+    int rc = bxf_context_getobject(ctx, name, (void **)&norm);
+    if (rc > 0)
+        *addr = bxfi_denormalize_addr(norm);
+    return rc;
+}
+
+int bxf_context_addfnaddr(bxf_context ctx, const char *name, void (*fn)(void))
+{
+    return bxf_context_addaddr(ctx, name, (void *)fn);
+}
+
+int bxf_context_getfnaddr(bxf_context ctx, const char *name, void (**fn)(void))
+{
+    return bxf_context_getaddr(ctx, name, (void **)fn);
+}
+
 int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl)
 {
     struct bxfi_ctx_fhandle *elt;
