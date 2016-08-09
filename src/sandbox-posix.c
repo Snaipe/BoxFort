@@ -136,7 +136,9 @@ static void *child_pump_fn(void *nil)
             pthread_cond_wait(&self.cond, &self.sync);
         pthread_mutex_unlock(&self.sync);
 
-        siginfo_t infop = {0};
+        siginfo_t infop;
+        memset(&infop, 0, sizeof (infop));
+
         int rc;
         for (;;) {
             rc = waitid(P_ALL, 0, &infop, wflags);
@@ -580,8 +582,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     char map_name[sizeof ("bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
-    struct bxfi_map local_ctx = { 0 };
+    struct bxfi_map local_ctx;
     pid_t pid = 0;
+
+    memset(&local_ctx, 0, sizeof (local_ctx));
 
     intptr_t errnum;
     int map_rc = -1;
