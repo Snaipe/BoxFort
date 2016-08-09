@@ -72,6 +72,16 @@ static void *lib_dt_lookup(bxfi_exe_lib lib, ElfSWord tag)
     return NULL;
 }
 
+static ElfWord lib_dt_lookup_val(bxfi_exe_lib lib, ElfSWord tag)
+{
+    ElfW(Addr) base =(ElfW(Addr)) lib->l_addr;
+    for (const ElfW(Dyn) *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
+        if (dyn->d_tag == tag)
+            return dyn->d_un.d_val;
+    }
+    return -1;
+}
+
 #if !defined HAVE__R_DEBUG
 static ElfW(Addr) get_auxval(ElfAux *auxv, ElfW(Off) tag)
 {
@@ -276,7 +286,13 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
     /* Somewhy, eglibc always set l_name to the empty string. */
     if (lib->l_name[0])
         return lib->l_name;
-    return lib_dt_lookup(lib, DT_SONAME);
+
+    const char *strtab  = lib_dt_lookup(lib, DT_STRTAB);
+    ElfWord soname_off = lib_dt_lookup_val(lib, DT_SONAME);
+    if (!strtab || soname_off == -1)
+        return NULL;
+
+    return &strtab[soname_off];
 }
 
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
