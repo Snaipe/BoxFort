@@ -44,19 +44,19 @@
 #define GROWTH_RATIO (1.61)
 #define MAP_RETRIES 3
 
-#if BXF_BITS == 32
-# define SPTR 4
+#ifndef _WIN32
+# if BXF_BITS == 32
+#  define SPTR 4
 static void *mmap_max = (void *)0xf0000000;
-#elif BXF_BITS == 64
-# define SPTR 6
+# elif BXF_BITS == 64
+#  define SPTR 6
 
 /* On Linux it seems that you cannot map > 48-bit addresses */
 static void *mmap_max = (void *)0x7f0000000000;
-#else
-# error Platform not supported
-#endif
+# else
+#  error Platform not supported
+# endif
 
-#ifndef _WIN32
 static unsigned int mmap_seed;
 static void *mmap_base = (void*) ((uintptr_t)1 << (SPTR * 8 - 3));
 static intptr_t mmap_off = ((intptr_t)1 << ((SPTR / 2) * 8));
@@ -84,9 +84,12 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         .bInheritHandle = TRUE,
     };
 
-    /* Reserve whole address space (minus kernel-reserved) for possible max
-     * heap size */
-    LARGE_INTEGER sz = { .QuadPart = (uintptr_t)mmap_max };
+    /* Consider available commit limit for possible max heap size */
+    MEMORYSTATUSEX mem;
+    if (!GlobalMemoryStatusEx(&mem))
+        return -ENOMEM;
+
+    LARGE_INTEGER sz = { .QuadPart = mem.ullAvailPageFile };
 
     HANDLE hndl = CreateFileMapping(INVALID_HANDLE_VALUE, &inherit,
             PAGE_READWRITE | SEC_RESERVE, sz.HighPart, sz.LowPart, NULL);
