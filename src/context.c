@@ -158,26 +158,52 @@ int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr)
     if (rc < 0)
         return rc;
 
-    return bxf_context_addobject(ctx, name, &norm, sizeof (norm));
+    struct bxfi_ctx_object *elt;
+
+    size_t sonamelen = strlen(norm.soname) + 1;
+    size_t size = sizeof (void *) + sonamelen;
+    size_t len = strlen(name) + 1;
+
+    bxf_ptr p = bxf_arena_alloc(&ctx->arena, sizeof (*elt) + len + size);
+    if (p < 0)
+        return p;
+
+    elt = bxf_arena_ptr(ctx->arena, p);
+
+    elt->tag = BXFI_TAG_OBJECT;
+    elt->namesz = len;
+    memcpy(&elt->data, name, len);
+    memcpy(&elt->data[elt->namesz], &norm.addr, sizeof (void *));
+    memcpy(&elt->data[elt->namesz + sizeof (void *)], norm.soname, sonamelen);
+    return 0;
 }
 
 int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr)
 {
-    struct bxfi_addr *norm;
-    int rc = bxf_context_getobject(ctx, name, (void **)&norm);
-    if (rc > 0)
-        *addr = bxfi_denormalize_addr(norm);
+    struct {
+        void *addr;
+        const char soname[];
+    } *serialized;
+
+    int rc = bxf_context_getobject(ctx, name, (void **)&serialized);
+    if (rc > 0) {
+        struct bxfi_addr norm = {
+            .addr = serialized->addr,
+            .soname = serialized->soname,
+        };
+        *addr = bxfi_denormalize_addr(&norm);
+    }
     return rc;
 }
 
 int bxf_context_addfnaddr(bxf_context ctx, const char *name, void (*fn)(void))
 {
-    return bxf_context_addaddr(ctx, name, (void *)fn);
+    return bxf_context_addaddr(ctx, name, nonstd (void *)fn);
 }
 
 int bxf_context_getfnaddr(bxf_context ctx, const char *name, void (**fn)(void))
 {
-    return bxf_context_getaddr(ctx, name, (void **)fn);
+    return bxf_context_getaddr(ctx, name, nonstd (void **)fn);
 }
 
 int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl)
