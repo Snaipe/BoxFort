@@ -216,12 +216,12 @@ int bxf_context_getfile(bxf_context ctx, const char *name, FILE **file)
 #ifdef _WIN32
     HANDLE *hndl;
     int rc = bxf_context_getobject(ctx, name, (void **) &hndl);
-    if (!rc)
+    if (rc > 0)
         *file = _fdopen(_open_osfhandle((intptr_t) *hndl, 0), "r+");
 #else
     int *fd;
     int rc = bxf_context_getobject(ctx, name, (void **) &fd);
-    if (!rc)
+    if (rc > 0)
         *file = fdopen(*fd, "r+");
 #endif
     return rc;
