@@ -33,6 +33,7 @@
 struct bxfi_context {
     size_t total_sz;
     const void *fn;
+    pid_t pid;
     struct bxfi_ctx_arena context;
     size_t fn_soname_sz;
     int ok;
@@ -41,7 +42,6 @@ struct bxfi_context {
 struct bxfi_map {
     struct bxfi_context *ctx;
     int fd;
-    char map_name[sizeof ("bxfi_") + 21];
 };
 
 struct bxfi_sandbox {

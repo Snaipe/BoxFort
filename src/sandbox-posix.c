@@ -224,35 +224,43 @@ static void bxfi_unmap_local_ctx(struct bxfi_map *map)
     close(map->fd);
 }
 
+static int check_ctx_at(char *name, pid_t pid)
+{
+    int fd = shm_open(name, O_RDONLY, 0600);
+    int ok = fd != -1;
+    if (ok) {
+        struct bxfi_context *ctx = mmap(NULL, sizeof (struct bxfi_context),
+                PROT_READ, MAP_SHARED, fd, 0);
+        if (ctx != MAP_FAILED) {
+            ok = ctx->pid == pid;
+            munmap(ctx, sizeof (struct bxfi_context));
+        } else {
+            ok = 0;
+        }
+        close(fd);
+    }
+    return ok;
+}
+
+static char bxfi_ctx_path[sizeof ("/bxfi_") + 21];
+
 int bxfi_check_sandbox_ctx(void)
 {
-    char name[sizeof ("bxfi_") + 21] = "/bxf_dbg";
+    static char *fmts[] = { "/bxf_dbg", "/bxfi_%d", NULL };
 
-    int fd = shm_open(name, O_RDONLY, 0600);
-    if (fd != -1) {
-        close(fd);
-        return 1;
+    pid_t pid = getpid();
+
+    int ok = 0;
+    for (char **fmt = fmts; *fmt && !ok; ++fmt) {
+        snprintf(bxfi_ctx_path, sizeof (bxfi_ctx_path), *fmt, pid);
+        ok = check_ctx_at(bxfi_ctx_path, pid);
     }
-
-    snprintf(name, sizeof (name), "bxfi_%d", getpid());
-
-    fd = shm_open(name, O_RDONLY, 0600);
-    if (fd != -1)
-        close(fd);
-    return fd != -1;
+    return ok;
 }
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    char name[sizeof ("bxfi_") + 21] = "/bxf_dbg";
-
-    int fd = shm_open(name, O_RDWR, 0600);
-    if (fd == -1) {
-        snprintf(name, sizeof (name), "bxfi_%d", getpid());
-
-        fd = shm_open(name, O_RDWR, 0600);
-    }
-
+    int fd = shm_open(bxfi_ctx_path, O_RDWR, 0600);
     if (fd == -1)
         goto error;
 
@@ -273,7 +281,6 @@ int bxfi_init_sandbox_ctx(struct bxfi_map *map)
         goto error;
 
     *map = (struct bxfi_map) { .ctx = ctx, .fd = fd };
-    memcpy(map->map_name, name, sizeof (name));
     return 0;
 
 error:;
@@ -288,7 +295,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     map->ctx->ok = 1;
     bxfi_unmap_local_ctx(map);
 
-    if (shm_unlink(map->map_name) == -1)
+    if (shm_unlink(bxfi_ctx_path) == -1)
         return -errno;
 
     /* Wait for the parent to finalize initialization */
@@ -582,7 +589,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     pthread_once(&atfork, init_atfork);
 #endif
 
-    char map_name[sizeof ("bxfi_") + 21];
+    char map_name[sizeof ("/bxfi_") + 21];
     struct bxfi_sandbox *instance = NULL;
     struct bxfi_map local_ctx;
     pid_t pid = 0;
@@ -650,6 +657,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         local_ctx.ctx->ok = 0;
         local_ctx.ctx->fn = addr.addr;
+        local_ctx.ctx->pid = pid;
         bxf_context ictx = sandbox->inherit.context;
         if (ictx) {
 #ifdef BXF_ARENA_REOPEN_SHM
