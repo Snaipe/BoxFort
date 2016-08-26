@@ -123,9 +123,6 @@ list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 if (BXF_EXE_FMT_ELF)
   check_symbol_exists(_r_debug link.h HAVE__R_DEBUG)
   check_symbol_exists(_DYNAMIC link.h HAVE__DYNAMIC)
-
-  bxf_check_type_exists(Elf${BXF_BITS}_auxv_t elf.h HAVE_ELF_AUXV_T)
-  bxf_check_type_exists(Elf${BXF_BITS}_Auxinfo elf.h HAVE_ELF_AUXINFO)
 endif ()
 
 check_symbol_exists(PR_SET_PDEATHSIG sys/prctl.h HAVE_PR_SET_PDEATHSIG)
