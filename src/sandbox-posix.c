@@ -729,12 +729,12 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     /* This is here to try to prevent any tty hijacking from the child
      * process. They can of course still reattach, but this limits
      * over-zealous tentatives from programs like gdbserver. */
-    if (isatty(STDERR_FILENO))
-        ioctl(STDERR_FILENO, TIOCNOTTY, 0);
+    if (isatty(STDIN_FILENO))
+        ioctl(STDIN_FILENO, TIOCNOTTY, 0);
     if (isatty(STDOUT_FILENO))
         ioctl(STDOUT_FILENO, TIOCNOTTY, 0);
     if (isatty(STDERR_FILENO))
-        ioctl(STDOUT_FILENO, TIOCNOTTY, 0);
+        ioctl(STDERR_FILENO, TIOCNOTTY, 0);
 
     raise(SIGSTOP);
 
