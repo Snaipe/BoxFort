@@ -26,6 +26,10 @@
 
 #include <tlhelp32.h>
 
+#ifdef _MSC_VER
+#include <malloc.h>
+#endif
+
 static void *get_main_addr(void)
 {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE,
@@ -57,7 +61,13 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
         return -1;
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    char opcodes[(uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline];
+    uintptr_t size = (uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline;
+#ifndef _MSC_VER
+    char opcodes[size]; // VLA
+#else
+    char *opcodes = alloca(size);
+#endif
+
     memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
 
     uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr

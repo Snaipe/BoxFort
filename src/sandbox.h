@@ -39,7 +39,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map);
 # if defined(_MSC_VER)
 #  define BXFI_INITIALIZER_(Fn, Prefix) \
         static void Fn(void); \
-        __pragma(section(".CRT$XCU",read) \
+        __pragma(section(".CRT$XCU",read)) \
         __declspec(allocate(".CRT$XCU")) void (*Fn ## _init)(void) = Fn; \
         __pragma(comment(linker,"/include:" Prefix #Fn "_init"))
 #  ifdef _WIN64
