@@ -1,0 +1,49 @@
+version: 1.0.0_b{build}-{branch}
+
+os: Visual Studio 2015
+
+environment:
+  TERM: dumb
+  matrix:
+  - COMPILER: msvc
+    GENERATOR: "Visual Studio 14 2015"
+    CFLAGS: /MP
+    CXXFLAGS: /MP
+  - COMPILER: msvc
+    GENERATOR: "Visual Studio 14 2015 Win64"
+    CFLAGS: /MP
+    CXXFLAGS: /MP
+  - COMPILER: mingw
+    GENERATOR: "MSYS Makefiles"
+
+configuration:
+  - Debug
+  - RelWithDebInfo
+
+init:
+  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;C:\Python35;C:\Python35\Scripts;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
+  - set MSYSTEM=MINGW64
+  - pip install cram==0.7
+
+install:
+  - mkdir build && cd build
+  - >
+      cmake
+      -Wno-dev
+      -DCMAKE_INSTALL_PREFIX=boxfort-%RELEASE_NAME%
+      -DCMAKE_BUILD_TYPE="%CONFIGURATION%"
+      %CMAKE_OPTS%
+      -G "%GENERATOR%"
+      ..
+
+build_script:
+  - cmake --build .
+  - if %COMPILER% == "mingw" ( cmake --build . -- -j4 ) else ( cmake --build . )
+
+test_script:
+  - ctest -j2 --output-on-failure --timeout=10
+
+test: off
+
+artifacts:
+  path: build
