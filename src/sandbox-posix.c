@@ -645,7 +645,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         if (sandbox->debug.debugger)
             strcpy(map_name, "/bxf_dbg");
         else
-            snprintf(map_name, sizeof (map_name), "bxfi_%d", pid);
+            snprintf(map_name, sizeof (map_name), "/bxfi_%d", pid);
 
         size_t len = strlen(addr.soname);
 
@@ -883,8 +883,8 @@ int bxf_wait(bxf_instance *instance, double timeout)
 
     /* Enforce the deletion of the shm file */
     if (!instance->status.alive) {
-        char map_name[sizeof ("bxfi_") + 21];
-        snprintf(map_name, sizeof (map_name), "bxfi_%d", (int) instance->pid);
+        char map_name[sizeof ("/bxfi_") + 21];
+        snprintf(map_name, sizeof (map_name), "/bxfi_%d", (int) instance->pid);
 
         shm_unlink(map_name);
     }
