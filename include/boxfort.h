@@ -29,6 +29,28 @@
 # include <math.h>
 # include <stdint.h>
 
+# if defined _WIN32 || defined __CYGWIN__
+#  ifdef BXF_BUILDING_LIB
+#   ifdef __GNUC__
+#    define BXF_API __attribute__((dllexport))
+#   else
+#    define BXF_API __declspec(dllexport)
+#   endif
+#  else
+#   ifdef __GNUC__
+#    define BXF_API __attribute__((dllimport))
+#   else
+#    define BXF_API __declspec(dllimport)
+#   endif
+#  endif
+# else
+#  if __GNUC__ >= 4
+#   define BXF_API __attribute__((visibility("default")))
+#  else
+#   define BXF_API
+#  endif
+# endif
+
 /* Arena API */
 
 /**
@@ -86,23 +108,24 @@ typedef intptr_t bxf_ptr;
 
 typedef int (bxf_arena_fn)(void *, size_t, void *);
 
-int bxf_arena_init(size_t initial, int flags, bxf_arena *arena);
+BXF_API int bxf_arena_init(size_t initial, int flags, bxf_arena *arena);
 
-int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena);
+BXF_API int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena);
 
-int bxf_arena_term(bxf_arena *arena);
+BXF_API int bxf_arena_term(bxf_arena *arena);
 
-bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size);
+BXF_API bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size);
 
-bxf_ptr bxf_arena_realloc(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
+BXF_API bxf_ptr bxf_arena_realloc(bxf_arena *arena, bxf_ptr ptr,
+        size_t newsize);
 
-int bxf_arena_grow(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
+BXF_API int bxf_arena_grow(bxf_arena *arena, bxf_ptr ptr, size_t newsize);
 
-int bxf_arena_free(bxf_arena *arena, bxf_ptr ptr);
+BXF_API int bxf_arena_free(bxf_arena *arena, bxf_ptr ptr);
 
-int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user);
+BXF_API int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user);
 
-void *bxf_arena_ptr(bxf_arena arena, bxf_ptr ptr);
+BXF_API void *bxf_arena_ptr(bxf_arena arena, bxf_ptr ptr);
 
 /* Resource context API */
 
@@ -114,34 +137,40 @@ typedef int bxf_fhandle;
 
 typedef struct bxf_context *bxf_context;
 
-int bxf_context_init(bxf_context *ctx);
+BXF_API int bxf_context_init(bxf_context *ctx);
 
-int bxf_context_term(bxf_context ctx);
+BXF_API int bxf_context_term(bxf_context ctx);
 
-int bxf_context_addstatic(bxf_context ctx, const void *ptr, size_t size);
+BXF_API int bxf_context_addstatic(bxf_context ctx, const void *ptr,
+        size_t size);
 
-int bxf_context_addarena(bxf_context ctx, bxf_arena arena);
+BXF_API int bxf_context_addarena(bxf_context ctx, bxf_arena arena);
 
-int bxf_context_addobject(bxf_context ctx, const char *name,
+BXF_API int bxf_context_addobject(bxf_context ctx, const char *name,
         const void *ptr, size_t size);
 
-int bxf_context_getobject(bxf_context ctx, const char *name, void **ptr);
+BXF_API int bxf_context_getobject(bxf_context ctx, const char *name,
+        void **ptr);
 
-int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr);
+BXF_API int bxf_context_addaddr(bxf_context ctx, const char *name,
+        const void *addr);
 
-int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr);
+BXF_API int bxf_context_getaddr(bxf_context ctx, const char *name,
+        void **addr);
 
-int bxf_context_addfnaddr(bxf_context ctx, const char *name, void (*fn)(void));
+BXF_API int bxf_context_addfnaddr(bxf_context ctx, const char *name,
+        void (*fn)(void));
 
-int bxf_context_getfnaddr(bxf_context ctx, const char *name, void (**fn)(void));
+BXF_API int bxf_context_getfnaddr(bxf_context ctx, const char *name,
+        void (**fn)(void));
 
-int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl);
+BXF_API int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl);
 
-int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);
+BXF_API int bxf_context_addfile(bxf_context ctx, const char *name, FILE *file);
 
-int bxf_context_getfile(bxf_context ctx, const char *name, FILE **file);
+BXF_API int bxf_context_getfile(bxf_context ctx, const char *name, FILE **file);
 
-bxf_context bxf_context_current(void);
+BXF_API bxf_context bxf_context_current(void);
 
 /* Sandbox API */
 
@@ -248,18 +277,18 @@ typedef const struct bxf_start_params *bxf_start_params;
 # define bxf_start(Instance, Sandbox, ...) (bxf_start_struct((Instance), \
             (Sandbox), \
             &(struct bxf_start_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_start_struct(bxf_instance **instance,
+BXF_API int bxf_start_struct(bxf_instance **instance,
         bxf_sandbox *sandbox, bxf_start_params params);
 
-int bxf_term(bxf_instance *instance);
-int bxf_wait(bxf_instance *instance, double timeout);
+BXF_API int bxf_term(bxf_instance *instance);
+BXF_API int bxf_wait(bxf_instance *instance, double timeout);
 
 # define bxf_spawn(Instance, ...) (bxf_spawn_struct((Instance), \
             &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
+BXF_API int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
 
 # define bxf_run(...) (bxf_run_struct( \
             &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-int bxf_run_struct(bxf_spawn_params params);
+BXF_API int bxf_run_struct(bxf_spawn_params params);
 
 #endif /* !BOXFORT_H_ */

@@ -48,7 +48,7 @@ if (MSVC)
     endif ()
     set (ASM_EXTENSION ".asm")
 else ()
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -pedantic")
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra -pedantic -fvisibility=hidden")
 
     enable_language (ASM)
     if (_ARCH MATCHES "${I386}")
