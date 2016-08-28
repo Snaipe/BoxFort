@@ -85,7 +85,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     };
 
     /* Consider available commit limit for possible max heap size */
-    MEMORYSTATUSEX mem;
+    MEMORYSTATUSEX mem = { .dwLength = sizeof (mem) };
     if (!GlobalMemoryStatusEx(&mem))
         return -ENOMEM;
 
