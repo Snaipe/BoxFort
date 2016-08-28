@@ -558,18 +558,19 @@ static void term_child_pump(void)
 
 static int find_exe(const char *progname, char *out, size_t size)
 {
-    char *sptr;
-
+    char *sptr = NULL;
     char *path = strdup(getenv("PATH"));
     char *p = strtok_r(path, ":", &sptr);
 
-    while ((p = strtok_r(NULL, ":", &sptr))) {
+    while (p) {
         snprintf(out, size, "%s/%s", *p ? p : ".", progname);
 
         struct stat sb;
         int rc = stat(out, &sb);
         if (!rc && (S_ISREG(sb.st_mode) || S_ISLNK(sb.st_mode)))
             break;
+
+        p = strtok_r(NULL, ":", &sptr);
     }
 
     free(path);
