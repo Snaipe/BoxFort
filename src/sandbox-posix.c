@@ -224,43 +224,16 @@ static void bxfi_unmap_local_ctx(struct bxfi_map *map)
     close(map->fd);
 }
 
-static int check_ctx_at(char *name, pid_t pid)
-{
-    int fd = shm_open(name, O_RDONLY, 0600);
-    int ok = fd != -1;
-    if (ok) {
-        struct bxfi_context *ctx = mmap(NULL, sizeof (struct bxfi_context),
-                PROT_READ, MAP_SHARED, fd, 0);
-        if (ctx != MAP_FAILED) {
-            ok = ctx->pid == pid;
-            munmap(ctx, sizeof (struct bxfi_context));
-        } else {
-            ok = 0;
-        }
-        close(fd);
-    }
-    return ok;
-}
-
-static char bxfi_ctx_path[sizeof ("/bxfi_") + 21];
-
 int bxfi_check_sandbox_ctx(void)
 {
-    static char *fmts[] = { "/bxf_dbg", "/bxfi_%d", NULL };
-
-    pid_t pid = getpid();
-
-    int ok = 0;
-    for (char **fmt = fmts; *fmt && !ok; ++fmt) {
-        snprintf(bxfi_ctx_path, sizeof (bxfi_ctx_path), *fmt, pid);
-        ok = check_ctx_at(bxfi_ctx_path, pid);
-    }
-    return ok;
+    return !!getenv("BXFI_MAP");
 }
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    int fd = shm_open(bxfi_ctx_path, O_RDWR, 0600);
+    const char *ctx_path = getenv("BXFI_MAP");
+
+    int fd = shm_open(ctx_path, O_RDWR, 0600);
     if (fd == -1)
         goto error;
 
@@ -292,14 +265,19 @@ error:;
 
 int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 {
+    /* This is either our PID or the debugging server's PID */
+    pid_t control_pid = map->ctx->pid;
+
     map->ctx->ok = 1;
     bxfi_unmap_local_ctx(map);
 
-    if (shm_unlink(bxfi_ctx_path) == -1)
+    const char *ctx_path = getenv("BXFI_MAP");
+
+    if (shm_unlink(ctx_path) == -1)
         return -errno;
 
-    /* Wait for the parent to finalize initialization */
-    raise(SIGSTOP);
+    /* Notify the parent to finalize initialization */
+    kill(control_pid, SIGSTOP);
     return 0;
 }
 
@@ -579,6 +557,20 @@ static int find_exe(const char *progname, char *out, size_t size)
     return 0;
 }
 
+static char **dupenv(char **concat)
+{
+    size_t len = 0, clen = 0;
+    for (char **e = environ; *e; ++e, ++len);
+    for (char **e = concat; *e; ++e, ++clen);
+
+    char **dupe = malloc(sizeof (void *) * (len + clen + 1));
+    memcpy(dupe, concat, clen * sizeof (void *));
+    memcpy(dupe + clen, environ, len * sizeof (void *));
+    dupe[len + clen] = NULL;
+
+    return dupe;
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
         void *user, bxf_dtor user_dtor)
@@ -643,10 +635,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             goto err;
         }
 
-        if (sandbox->debug.debugger)
-            strcpy(map_name, "/bxf_dbg");
-        else
-            snprintf(map_name, sizeof (map_name), "/bxfi_%d", pid);
+        snprintf(map_name, sizeof (map_name), "/bxfi_%d", pid);
 
         size_t len = strlen(addr.soname);
 
@@ -711,9 +700,11 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 #endif
 
+    pid = getpid();
+
     instance->props = (struct bxf_instance) {
         .sandbox = sandbox,
-        .pid = getpid(),
+        .pid = pid,
     };
 
     if (preexec && preexec(&instance->props) < 0)
@@ -728,6 +719,13 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     setsid();
 
     raise(SIGSTOP);
+
+    snprintf(map_name, sizeof (map_name), "/bxfi_%d", pid);
+
+    char env_map[sizeof ("BXFI_MAP=") + sizeof (map_name)];
+    snprintf(env_map, sizeof (env_map), "BXFI_MAP=%s", map_name);
+
+    char **env = dupenv((char *[]) { env_map, NULL });
 
     if (sandbox->debug.debugger) {
         const char *dbg = NULL;
@@ -765,9 +763,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             abort();
         }
 
-        execv(dbg_full, argv);
+        execve(dbg_full, argv, env);
     } else {
-        execl(exe, "boxfort-worker", NULL);
+        execle(exe, "boxfort-worker", NULL, env);
     }
     _exit(errno);
 
