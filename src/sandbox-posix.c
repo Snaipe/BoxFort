@@ -60,6 +60,15 @@
 # include <mach-o/dyld.h>
 #endif
 
+#ifndef HAVE_ENVIRON
+# ifdef __APPLE__
+#  include <crt_externs.h>
+#  define environ (*_NSGetEnviron ())
+# else
+extern char **environ;
+# endif
+#endif
+
 static struct {
     struct bxfi_sandbox *alive;
     struct bxfi_sandbox *dead;

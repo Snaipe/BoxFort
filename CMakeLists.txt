@@ -148,6 +148,8 @@ check_symbol_exists(CLOCK_MONOTONIC_RAW "time.h" HAVE_CLOCK_MONOTONIC_RAW)
 
 check_symbol_exists(gettimeofday "sys/time.h" HAVE_GETTIMEOFDAY)
 
+check_symbol_exists(environ "unistd.h" HAVE_ENVIRON)
+
 check_library_exists(pthread pthread_cond_timedwait_relative_np
   "pthread.h" HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
 
