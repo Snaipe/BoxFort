@@ -36,21 +36,11 @@
 
 int bxfi_check_sandbox_ctx(void)
 {
-    TCHAR name[sizeof ("Local\\bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), GetCurrentProcessId());
-
-    HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
-    if (!shm)
-        return 0;
-    CloseHandle(shm);
-    return 1;
+    return !!GetEnvironmentVariable(TEXT("BXFI_MAP"), NULL, 0);
 }
 
-static int bxfi_create_local_ctx(struct bxfi_map *map, bxf_pid pid, size_t sz)
+static int bxfi_create_local_ctx(struct bxfi_map *map, LPTCH name, size_t sz)
 {
-    TCHAR name[sizeof ("Local\\bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), pid);
-
     HANDLE shm = CreateFileMapping(INVALID_HANDLE_VALUE, NULL,
             PAGE_READWRITE, 0, sz, name);
 
@@ -64,14 +54,13 @@ static int bxfi_create_local_ctx(struct bxfi_map *map, bxf_pid pid, size_t sz)
         return -ENOMEM;
 
     *map = (struct bxfi_map) { .ctx = ctx, .handle = shm };
-    memcpy(map->map_name, name, sizeof (name));
+    memcpy(map->map_name, name, (_tcslen(name) + 1) * sizeof (TCHAR));
     return 0;
 }
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    TCHAR name[sizeof ("Local\\bxfi_") + 21];
-    _sntprintf(name, sizeof (name), TEXT("Local\\bxfi_%lu"), GetCurrentProcessId());
+    TCHAR *name = _tgetenv(TEXT("BXFI_MAP"));
 
     HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
     if (!shm)
@@ -97,7 +86,7 @@ int bxfi_init_sandbox_ctx(struct bxfi_map *map)
         goto error;
 
     *map = (struct bxfi_map) { .ctx = ctx, .handle = shm };
-    memcpy(map->map_name, name, sizeof (name));
+    memcpy(map->map_name, name, (_tcslen(name) + 1) * sizeof (TCHAR));
     return 0;
 
 error:
@@ -286,10 +275,40 @@ static int do_inherit_handle(bxf_fhandle handle, void *user)
     return 0;
 }
 
+static LPTCH dupenv(LPTCH concat)
+{
+    LPTCH envp = GetEnvironmentStrings();
+
+    size_t len = 0;
+    for (LPTCH e = envp; *e; ) {
+        size_t l = _tcslen(e) + 1;
+        e += l;
+        len += l;
+    }
+
+    size_t clen = 0;
+    for (LPTCH e = concat; *e; ) {
+        size_t l = _tcslen(e) + 1;
+        e += l;
+        clen += l;
+    }
+
+    LPTCH dupe = malloc(len + clen + 1);
+    memcpy(dupe, concat, clen);
+    memcpy(dupe + clen, envp, len);
+    dupe[len + clen] = 0;
+
+    FreeEnvironmentStrings(envp);
+
+    return dupe;
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
         void *user, bxf_dtor user_dtor)
 {
+    static LONG boxid = 0;
+
     int errnum = 0;
     struct bxfi_sandbox *instance = NULL;
     BOOL success = FALSE;
@@ -373,6 +392,16 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     uint64_t ts_start = bxfi_timestamp();
     uint64_t mts_start = bxfi_timestamp_monotonic();
 
+    LONG bid = InterlockedIncrement(&boxid);
+
+    TCHAR map_name[sizeof ("Local\\bxfi_") + 21];
+    _sntprintf(map_name, sizeof (map_name), TEXT("Local\\bxfi_%lu"), bid);
+
+    TCHAR env_map[sizeof ("BXFI_MAP=") + sizeof (map_name) + 1];
+    _sntprintf(env_map, sizeof (env_map), "BXFI_MAP=%s\0", map_name);
+
+    void *env = dupenv(env_map);
+
     if (sandbox->debug.debugger) {
         TCHAR *dbg = NULL;
         TCHAR *cmdline = NULL;
@@ -430,7 +459,7 @@ file_not_found:
 
         success = CreateProcess(dbg_full, cmdline, NULL,
                 NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-                NULL, NULL, &si.StartupInfo, &info);
+                env, NULL, &si.StartupInfo, &info);
 
         free(dbg_full);
         free(path);
@@ -438,7 +467,7 @@ file_not_found:
     } else {
         success = CreateProcess(filename, TEXT("boxfort-worker"), NULL,
                 NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-                NULL, NULL, &si.StartupInfo, &info);
+                env, NULL, &si.StartupInfo, &info);
     }
 
     errnum = -EPROTO;
@@ -476,7 +505,7 @@ file_not_found:
     size_t len = strlen(addr.soname);
 
     struct bxfi_map map;
-    if ((errnum = bxfi_create_local_ctx(&map, info.dwProcessId, len + 1)) < 0)
+    if ((errnum = bxfi_create_local_ctx(&map, map_name, len + 1)) < 0)
         goto error;
 
     map.ctx->sync = sync;
