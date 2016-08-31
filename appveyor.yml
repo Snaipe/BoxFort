@@ -37,7 +37,6 @@ install:
       ..
 
 build_script:
-  - cmake --build .
   - if %COMPILER% == "mingw" ( cmake --build . -- -j4 ) else ( cmake --build . )
 
 test_script:
