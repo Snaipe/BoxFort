@@ -29,26 +29,30 @@
 # include <math.h>
 # include <stdint.h>
 
-# if defined _WIN32 || defined __CYGWIN__
-#  ifdef BXF_BUILDING_LIB
-#   ifdef __GNUC__
-#    define BXF_API __attribute__((dllexport))
+# if !defined BXF_STATIC_LIB && !defined BXF_API
+#  if defined _WIN32 || defined __CYGWIN__
+#   ifdef BXF_BUILDING_LIB
+#    ifdef __GNUC__
+#     define BXF_API __attribute__((dllexport))
+#    else
+#     define BXF_API __declspec(dllexport)
+#    endif
 #   else
-#    define BXF_API __declspec(dllexport)
+#    ifdef __GNUC__
+#     define BXF_API __attribute__((dllimport))
+#    else
+#     define BXF_API __declspec(dllimport)
+#    endif
 #   endif
 #  else
-#   ifdef __GNUC__
-#    define BXF_API __attribute__((dllimport))
+#   if __GNUC__ >= 4
+#    define BXF_API __attribute__((visibility("default")))
 #   else
-#    define BXF_API __declspec(dllimport)
+#    define BXF_API
 #   endif
 #  endif
-# else
-#  if __GNUC__ >= 4
-#   define BXF_API __attribute__((visibility("default")))
-#  else
-#   define BXF_API
-#  endif
+# elif !defined BXF_API
+#  define BXF_API
 # endif
 
 /* Arena API */
