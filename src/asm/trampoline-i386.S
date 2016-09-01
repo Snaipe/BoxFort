@@ -23,6 +23,7 @@
  */
 #include "mangling.h"
 
+.hidden MANGLE(bxfi_trampoline)
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
     call next
@@ -36,10 +37,12 @@ next:
 .align 4
 #endif
 
+.hidden MANGLE(bxfi_trampoline_addr)
 .globl MANGLE(bxfi_trampoline_addr)
 MANGLE(bxfi_trampoline_addr):
 addr_data:
 .fill 4, 1, 0
 
+.hidden MANGLE(bxfi_trampoline_end)
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):

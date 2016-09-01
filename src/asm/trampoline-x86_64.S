@@ -23,6 +23,7 @@
  */
 #include "mangling.h"
 
+.hidden MANGLE(bxfi_trampoline)
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
     jmp *addr_data(%rip)
@@ -33,10 +34,12 @@ MANGLE(bxfi_trampoline):
 .align 8
 #endif
 
+.hidden MANGLE(bxfi_trampoline_addr)
 .globl MANGLE(bxfi_trampoline_addr)
 MANGLE(bxfi_trampoline_addr):
 addr_data:
 .fill 8, 1, 0
 
+.hidden MANGLE(bxfi_trampoline_end)
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):
