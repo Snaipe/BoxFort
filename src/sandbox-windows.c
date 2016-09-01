@@ -292,11 +292,32 @@ static LPTCH dupenv(LPTCH concat)
         e += l;
         clen += l;
     }
-
-    LPTCH dupe = malloc(len + clen + 1);
-    memcpy(dupe, concat, clen);
-    memcpy(dupe + clen, envp, len);
-    dupe[len + clen] = 0;
+    LPTCH dupe = calloc(sizeof (TCHAR), len + clen - 1);
+    LPTCH newenv = dupe;
+    LPTCH e1 = concat, e2 = envp;
+    while (*e1 && *e2) {
+        int cmp = _tcscmp(e1, e2);
+        LPTCH *ins = cmp > 0 ? &e2 : &e1;
+        if (!cmp)
+            e2 += _tcslen(e2) + 1;
+        size_t l = _tcslen(*ins) + 1;
+        memcpy(newenv, *ins, l * sizeof (TCHAR));
+        *ins += l;
+        newenv += l;
+    }
+    while (*e1) {
+        size_t l = _tcslen(e1) + 1;
+        memcpy(newenv, e1, l * sizeof (TCHAR));
+        e1 += l;
+        newenv += l;
+    }
+    while (*e2) {
+        size_t l = _tcslen(e2) + 1;
+        memcpy(newenv, e2, l * sizeof (TCHAR));
+        e2 += l;
+        newenv += l;
+    }
+    *newenv = 0;
 
     FreeEnvironmentStrings(envp);
 
@@ -397,8 +418,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     TCHAR map_name[sizeof ("Local\\bxfi_") + 21];
     _sntprintf(map_name, sizeof (map_name), TEXT("Local\\bxfi_%lu"), bid);
 
-    TCHAR env_map[sizeof ("BXFI_MAP=") + sizeof (map_name) + 1];
-    _sntprintf(env_map, sizeof (env_map), "BXFI_MAP=%s\0", map_name);
+    TCHAR env_map[sizeof ("BXFI_MAP=") + sizeof (map_name) + 2];
+    memset(env_map, 0, sizeof (env_map));
+    _sntprintf(env_map, sizeof (env_map), "BXFI_MAP=%s", map_name);
 
     void *env = dupenv(env_map);
 
