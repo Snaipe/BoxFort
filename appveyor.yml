@@ -4,17 +4,18 @@ os: Visual Studio 2015
 
 environment:
   TERM: dumb
+  CRAM_SHELL: "C:\\msys64\\usr\\bin\\sh.exe"
   matrix:
   - COMPILER: msvc
     GENERATOR: "Visual Studio 14 2015"
     CFLAGS: /MP
     CXXFLAGS: /MP
-  - COMPILER: msvc
-    GENERATOR: "Visual Studio 14 2015 Win64"
-    CFLAGS: /MP
-    CXXFLAGS: /MP
   - COMPILER: mingw
     GENERATOR: "MSYS Makefiles"
+
+platform:
+  - x86
+  - x64
 
 configuration:
   - Debug
@@ -26,6 +27,10 @@ init:
   - pip install cram==0.7
 
 install:
+  - ps: $env:RELEASE_NAME = $env:APPVEYOR_REPO_BRANCH -replace "/", "-"
+  # Hack to make git think it is on the tip of the repo branch
+  - 'git checkout -B %APPVEYOR_REPO_BRANCH%'
+
   - mkdir build && cd build
   - >
       cmake
@@ -41,6 +46,3 @@ build_script:
 
 test_script:
   - ctest -j2 --output-on-failure --timeout=10
-
-artifacts:
-  path: build
