@@ -36,7 +36,7 @@
 
 int bxfi_check_sandbox_ctx(void)
 {
-    return !!GetEnvironmentVariable(TEXT("BXFI_MAP"), NULL, 0);
+    return !!_tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
 }
 
 static int bxfi_create_local_ctx(struct bxfi_map *map, LPTCH name, size_t sz)
@@ -60,7 +60,8 @@ static int bxfi_create_local_ctx(struct bxfi_map *map, LPTCH name, size_t sz)
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    TCHAR *name = _tgetenv(TEXT("BXFI_MAP"));
+    TCHAR *env = _tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
+    TCHAR *name = env + sizeof ("BXFI_MAP=") - 1;
 
     HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
     if (!shm)
@@ -275,55 +276,6 @@ static int do_inherit_handle(bxf_fhandle handle, void *user)
     return 0;
 }
 
-static LPTCH dupenv(LPTCH concat)
-{
-    LPTCH envp = GetEnvironmentStrings();
-
-    size_t len = 0;
-    for (LPTCH e = envp; *e; ) {
-        size_t l = _tcslen(e) + 1;
-        e += l;
-        len += l;
-    }
-
-    size_t clen = 0;
-    for (LPTCH e = concat; *e; ) {
-        size_t l = _tcslen(e) + 1;
-        e += l;
-        clen += l;
-    }
-    LPTCH dupe = calloc(sizeof (TCHAR), len + clen - 1);
-    LPTCH newenv = dupe;
-    LPTCH e1 = concat, e2 = envp;
-    while (*e1 && *e2) {
-        int cmp = _tcscmp(e1, e2);
-        LPTCH *ins = cmp > 0 ? &e2 : &e1;
-        if (!cmp)
-            e2 += _tcslen(e2) + 1;
-        size_t l = _tcslen(*ins) + 1;
-        memcpy(newenv, *ins, l * sizeof (TCHAR));
-        *ins += l;
-        newenv += l;
-    }
-    while (*e1) {
-        size_t l = _tcslen(e1) + 1;
-        memcpy(newenv, e1, l * sizeof (TCHAR));
-        e1 += l;
-        newenv += l;
-    }
-    while (*e2) {
-        size_t l = _tcslen(e2) + 1;
-        memcpy(newenv, e2, l * sizeof (TCHAR));
-        e2 += l;
-        newenv += l;
-    }
-    *newenv = 0;
-
-    FreeEnvironmentStrings(envp);
-
-    return dupe;
-}
-
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
         void *user, bxf_dtor user_dtor)
@@ -422,8 +374,6 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     memset(env_map, 0, sizeof (env_map));
     _sntprintf(env_map, sizeof (env_map), "BXFI_MAP=%s", map_name);
 
-    void *env = dupenv(env_map);
-
     if (sandbox->debug.debugger) {
         TCHAR *dbg = NULL;
         TCHAR *cmdline = NULL;
@@ -431,27 +381,33 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         switch (sandbox->debug.debugger) {
             case BXF_DBG_WINDBG: {
                 dbg = TEXT("gdbserver");
-                TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s");
+                TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                        env_map);
                 cmdline = malloc(sizeof (TCHAR) * size);
-                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
+                        env_map);
             } break;
             case BXF_DBG_GDB: {
                 dbg = TEXT("gdbserver");
-                TCHAR *fmt = TEXT("boxfort-worker tcp:%d %s");
+                TCHAR *fmt = TEXT("boxfort-worker tcp:%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                        env_map);
                 cmdline = malloc(sizeof (TCHAR) * size);
-                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
+                        env_map);
             } break;
             case BXF_DBG_LLDB: {
                 dbg = TEXT("lldb-server");
-                TCHAR *fmt = TEXT("boxfort-worker gdbserver *:%d %s");
+                TCHAR *fmt = TEXT("boxfort-worker gdbserver *:%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename);
+                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                        env_map);
                 cmdline = malloc(sizeof (TCHAR) * size);
-                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename);
+                _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
+                        env_map);
             } break;
             default:
                 errnum = -EINVAL;
@@ -481,15 +437,22 @@ file_not_found:
 
         success = CreateProcess(dbg_full, cmdline, NULL,
                 NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-                env, NULL, &si.StartupInfo, &info);
+                NULL, NULL, &si.StartupInfo, &info);
 
         free(dbg_full);
         free(path);
         free(cmdline);
     } else {
-        success = CreateProcess(filename, TEXT("boxfort-worker"), NULL,
+        TCHAR *fmt = TEXT("boxfort-worker %s");
+        SIZE_T size = _sctprintf(fmt, filename, env_map);
+        TCHAR *cmdline = malloc(sizeof (TCHAR) * size);
+        _sntprintf(cmdline, size, fmt, env_map);
+
+        success = CreateProcess(filename, cmdline, NULL,
                 NULL, TRUE, CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT,
-                env, NULL, &si.StartupInfo, &info);
+                NULL, NULL, &si.StartupInfo, &info);
+
+        free(cmdline);
     }
 
     errnum = -EPROTO;
