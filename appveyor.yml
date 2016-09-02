@@ -11,8 +11,10 @@ environment:
     GENERATOR: "Visual Studio 14 2015"
     CFLAGS: /MP
     CXXFLAGS: /MP
+    BUILD_FLAGS: /verbosity:m
   - COMPILER: mingw
     GENERATOR: "MSYS Makefiles"
+    BUILD_FLAGS: -j2
 
 platform:
   - x86
@@ -49,7 +51,7 @@ install:
       ..
 
 build_script:
-  - if %COMPILER% == "mingw" ( cmake --build . -- -j4 ) else ( cmake --build . -- /verbosity:m )
+  - cmake --build . -- %BUILD_FLAGS%
 
 test_script:
   - ctest -j2 --output-on-failure --timeout=10
