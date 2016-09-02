@@ -4,6 +4,9 @@
 
 set(PATH_VAR
   "${PROJECT_BINARY_DIR}/sample"
+  "${PROJECT_BINARY_DIR}/sample/Debug"
+  "${PROJECT_BINARY_DIR}/sample/Release"
+  "${PROJECT_BINARY_DIR}/sample/RelWithDebInfo"
   "${PROJECT_BINARY_DIR}/external/lib"
   "${PROJECT_BINARY_DIR}/external/bin"
 )
