@@ -42,7 +42,5 @@ build_script:
 test_script:
   - ctest -j2 --output-on-failure --timeout=10
 
-test: off
-
 artifacts:
   path: build
