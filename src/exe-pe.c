@@ -60,6 +60,12 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     if (!addr)
         return -1;
 
+#if defined (BXF_ARCH_x86) || defined (BXF_ARCH_x86_64)
+    /* If we got stuck on a jmp table entry we need to follow the trail */
+    if (*(char *)addr == (char)0xE9)
+        addr = (char *)addr + *(DWORD *)((char *) addr + 1) + 5;
+#endif
+
     /* Reserve enough space for the trampoline and copy the default opcodes */
     uintptr_t size = (uintptr_t)&bxfi_trampoline_end
                    - (uintptr_t)&bxfi_trampoline;
