@@ -12,6 +12,8 @@ include (CheckLibraryExists)
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
 
+include (CheckCompile)
+
 set (I386 "^(i[3-7]|x)86$")
 set (AMD64 "^(x86_|x86-|AMD|amd|x)64$")
 
@@ -111,15 +113,6 @@ string (TOUPPER "${BXF_EXE_FORMAT}" _EXE_SUFFIX)
 string (REGEX REPLACE "[^A-Z0-9_]" "_" _EXE_SUFFIX "${_EXE_SUFFIX}")
 set ("BXF_EXE_FMT_${_EXE_SUFFIX}" 1)
 
-function (bxf_check_type_exists _T _H _VAR)
-  include (CheckCSourceCompiles)
-  check_c_source_compiles ("
-    #include <${_H}>
-    typedef ${_T} checked_type;
-    int main(void) { return 0; }
-  " ${_VAR})
-endfunction ()
-
 list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 
 if (BXF_EXE_FMT_ELF)
@@ -154,6 +147,8 @@ check_library_exists(pthread pthread_cond_timedwait_relative_np
   "pthread.h" HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
 
 check_library_exists(m trunc "math.h" HAVE_LIBM)
+
+check_asm_directive_exists(".hidden test" ASSEMBLER_SUPPORTS_HIDDEN)
 
 list(REMOVE_ITEM CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 

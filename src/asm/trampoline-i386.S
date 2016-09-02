@@ -21,9 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include "config.h"
 #include "mangling.h"
 
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
 .hidden MANGLE(bxfi_trampoline)
+#endif
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
     call next
@@ -37,12 +40,16 @@ next:
 .align 4
 #endif
 
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
 .hidden MANGLE(bxfi_trampoline_addr)
+#endif
 .globl MANGLE(bxfi_trampoline_addr)
 MANGLE(bxfi_trampoline_addr):
 addr_data:
 .fill 4, 1, 0
 
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
 .hidden MANGLE(bxfi_trampoline_end)
+#endif
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):
