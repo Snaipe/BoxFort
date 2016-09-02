@@ -4,6 +4,7 @@ os: Visual Studio 2015
 
 environment:
   TERM: dumb
+  PYTHON_BIN: python
   CRAM_SHELL: "C:\\msys64\\usr\\bin\\sh.exe"
   matrix:
   - COMPILER: msvc
@@ -22,9 +23,10 @@ configuration:
   - RelWithDebInfo
 
 init:
-  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;C:\Python35;C:\Python35\Scripts;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
+  - set PATH=C:\Python35;C:\Python35\Scripts;C:\msys64\mingw64\bin;C:\msys64\usr\bin;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
   - set MSYSTEM=MINGW64
   - pip install cram==0.7
+  - set
 
   # Remove Xamarin msbuild warnings
   - del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets"
