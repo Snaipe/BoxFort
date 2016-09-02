@@ -13,6 +13,11 @@ function (check_type_exists _T _H _VAR)
 endfunction ()
 
 function (check_asm_source_compiles _S _VAR)
+  if (NOT CMAKE_ASM-ATT_COMPILER_WORKS)
+    set (${_VAR} FALSE)
+    return ()
+  endif ()
+
   set (SRC "${PROJECT_BINARY_DIR}/CMakeFiles/CheckASMSource.S")
   file (WRITE ${SRC} "
     ${_S}
