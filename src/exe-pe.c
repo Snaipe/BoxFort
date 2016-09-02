@@ -61,14 +61,16 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
         return -1;
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    uintptr_t size = (uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline;
+    uintptr_t size = (uintptr_t)&bxfi_trampoline_end
+                   - (uintptr_t)&bxfi_trampoline;
+
 #ifndef _MSC_VER
     char opcodes[size]; // VLA
 #else
     char *opcodes = alloca(size);
 #endif
 
-    memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
+    memcpy(opcodes, &bxfi_trampoline, size);
 
     uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr
                          - (uintptr_t)&bxfi_trampoline;
@@ -79,11 +81,11 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 
     void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
-    size_t len = align2_up(offset + sizeof (opcodes), PAGE_SIZE);
+    size_t len = align2_up(offset + size, PAGE_SIZE);
 
     DWORD old;
     VirtualProtect(base, len, PAGE_EXECUTE_READWRITE, &old);
-    memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
+    memcpy(nonstd (void *) addr, opcodes, size);
     VirtualProtect(base, len, old, NULL);
     return 0;
 }
