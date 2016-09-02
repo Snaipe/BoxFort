@@ -26,6 +26,9 @@ init:
   - set MSYSTEM=MINGW64
   - pip install cram==0.7
 
+  # Remove Xamarin msbuild warnings
+  - del "C:\Program Files (x86)\MSBuild\14.0\Microsoft.Common.targets\ImportAfter\Xamarin.Common.targets"
+
 install:
   - ps: $env:RELEASE_NAME = $env:APPVEYOR_REPO_BRANCH -replace "/", "-"
   # Hack to make git think it is on the tip of the repo branch
@@ -42,7 +45,7 @@ install:
       ..
 
 build_script:
-  - if %COMPILER% == "mingw" ( cmake --build . -- -j4 ) else ( cmake --build . )
+  - if %COMPILER% == "mingw" ( cmake --build . -- -j4 ) else ( cmake --build . -- /verbosity:m )
 
 test_script:
   - ctest -j2 --output-on-failure --timeout=10
