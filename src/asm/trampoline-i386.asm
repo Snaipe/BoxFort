@@ -29,7 +29,7 @@ bxfi_trampoline label far
   call    next                                      ; Retrieve IP
 next:
   pop     eax
-  jmp     dword ptr addr_data [eax]
+  jmp     dword ptr (addr_data - next) [eax]
 
 ALIGN 4
 
