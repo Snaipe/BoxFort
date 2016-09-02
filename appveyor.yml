@@ -12,13 +12,19 @@ environment:
     CFLAGS: /MP
     CXXFLAGS: /MP
     BUILD_FLAGS: /verbosity:m
+  - COMPILER: msvc
+    GENERATOR: "Visual Studio 14 2015 Win64"
+    CFLAGS: /MP
+    CXXFLAGS: /MP
+    BUILD_FLAGS: /verbosity:m
   - COMPILER: mingw
     GENERATOR: "MSYS Makefiles"
+    CMAKE_OPTS: -DCMAKE_SYSTEM_PROCESSOR=x86 -DCMAKE_TOOLCHAIN_FILE=../.cmake/Toolchains/Toolchain-mingw-w64.cmake
     BUILD_FLAGS: -j2
-
-platform:
-  - x86
-  - x64
+  - COMPILER: mingw
+    GENERATOR: "MSYS Makefiles"
+    CMAKE_OPTS: -DCMAKE_SYSTEM_PROCESSOR=x64 -DCMAKE_TOOLCHAIN_FILE=../.cmake/Toolchains/Toolchain-mingw-w64.cmake
+    BUILD_FLAGS: -j2
 
 configuration:
   - Debug
