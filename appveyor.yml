@@ -20,7 +20,7 @@ environment:
   - COMPILER: mingw
     GENERATOR: "MSYS Makefiles"
     CMAKE_OPTS: -DCMAKE_SYSTEM_PROCESSOR=x86 -DCMAKE_TOOLCHAIN_FILE=../.cmake/Toolchains/Toolchain-mingw-w64.cmake
-    BUILD_FLAGS: -j2
+    BUILD_FLAGS: VERBOSE=1
   - COMPILER: mingw
     GENERATOR: "MSYS Makefiles"
     CMAKE_OPTS: -DCMAKE_SYSTEM_PROCESSOR=x64 -DCMAKE_TOOLCHAIN_FILE=../.cmake/Toolchains/Toolchain-mingw-w64.cmake
@@ -36,7 +36,7 @@ init:
   - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v DontShowUI /d 1
   - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v Disable /d 1
 
-  - set PATH=C:\Python35;C:\Python35\Scripts;C:\msys64\mingw64\bin;C:\msys64\usr\bin;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
+  - set PATH=C:\Python35;C:\Python35\Scripts;C:\msys64\mingw32\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
   - set MSYSTEM=MINGW64
   - pip install cram==0.7
 
