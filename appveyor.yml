@@ -33,8 +33,9 @@ configuration:
 init:
   # Disable windows process crash popup
   # See: https://msdn.microsoft.com/en-us/library/bb513638%28VS.85%29.aspx
-  - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v DontShowUI /d 1
-  - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v Disable /d 1
+  - reg add "HKLM\SYSTEM\CurrentControlSet\Control\Windows" /f /v ErrorMode /t REG_DWORD /d 2
+  - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v DontShowUI /t REG_DWORD /d 1
+  - reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting" /f /v Disable /t REG_DWORD /d 1
 
   - set PATH=C:\Python35;C:\Python35\Scripts;C:\msys64\mingw32\bin;C:\msys64\mingw64\bin;C:\msys64\usr\bin;%APPVEYOR_BUILD_FOLDER%\build;%APPVEYOR_BUILD_FOLDER%\build\Debug;%PATH%
   - set MSYSTEM=MINGW64
