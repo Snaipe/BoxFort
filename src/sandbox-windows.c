@@ -36,7 +36,13 @@
 
 int bxfi_check_sandbox_ctx(void)
 {
-    return !!_tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
+    int is_sandbox = !!_tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
+
+    /* If we are a sandbox, first thing we do is disable the crash dialog */
+    if (is_sandbox)
+        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);
+
+    return is_sandbox;
 }
 
 static int bxfi_create_local_ctx(struct bxfi_map *map, LPTCH name, size_t sz)
