@@ -89,7 +89,7 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
 
     pthread_mutex_lock(&self.sync);
     for (s = self.alive; s; s = s->next) {
-        if (s->props.pid == (bxf_pid) pid)
+        if (s->wait_pid == pid)
             break;
     }
     if (!s) {
@@ -128,7 +128,7 @@ static void remove_alive_by_pid(bxf_pid pid)
 {
     struct bxfi_sandbox **prev = &self.alive;
     for (struct bxfi_sandbox *s = self.alive; s; s = s->next) {
-        if (s->props.pid == pid) {
+        if (s->wait_pid == (pid_t) pid) {
             *prev = s->next;
             s->next = self.dead;
             self.dead = s;
@@ -278,6 +278,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     pid_t control_pid = map->ctx->pid;
 
     map->ctx->ok = 1;
+    map->ctx->pid = getpid();
     bxfi_unmap_local_ctx(map);
 
     const char *ctx_path = getenv("BXFI_MAP");
@@ -630,6 +631,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         goto err;
     } else if (pid) {
         instance->start_monotonic = bxfi_timestamp_monotonic();
+        instance->wait_pid = pid;
 
         instance->props = (struct bxf_instance) {
             .sandbox = sandbox,
@@ -676,6 +678,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         if (!local_ctx.ctx->ok)
             goto err;
+
+        instance->props.pid = local_ctx.ctx->pid;
 
         if (sandbox->quotas.runtime > 0)
             if (bxfi_push_timeout(instance, sandbox->quotas.runtime) < 0)

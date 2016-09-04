@@ -58,6 +58,10 @@ struct bxfi_sandbox {
      * Only used to calculate more accurate run times */
     uint64_t start_monotonic;
 
+    /* The child PID. Might be different from the sandbox PID, e.g. if run
+     * with a debugging server. */
+    pid_t wait_pid;
+
     pthread_mutex_t sync;
     pthread_cond_t cond;
     bxf_callback *callback;
