@@ -22,12 +22,12 @@
  * THE SOFTWARE.
  */
 #ifndef EXE_MACH_O_H_
-# define EXE_MACH_O_H_
+#define EXE_MACH_O_H_
 
 typedef int bxfi_exe_lib;
 typedef void *bxfi_exe_ctx;
 typedef void (bxfi_exe_fn)(void);
 
-# define BXFI_INVALID_LIB ((bxfi_exe_lib) -1)
+#define BXFI_INVALID_LIB ((bxfi_exe_lib) - 1)
 
 #endif /* !EXE_MACH_O_H_ */

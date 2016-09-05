@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 #ifndef TIMEOUT_H_
-# define TIMEOUT_H_
+#define TIMEOUT_H_
 
 int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout);
 void bxfi_cancel_timeout(struct bxfi_sandbox *instance);

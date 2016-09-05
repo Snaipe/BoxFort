@@ -22,15 +22,15 @@
  * THE SOFTWARE.
  */
 #ifndef ARENA_H_
-# define ARENA_H_
+#define ARENA_H_
 
-# ifdef _WIN32
-#  include <windows.h>
-# endif
-# include <stdint.h>
+#ifdef _WIN32
+# include <windows.h>
+#endif
+#include <stdint.h>
 
-# include "boxfort.h"
-# include "config.h"
+#include "boxfort.h"
+#include "config.h"
 
 struct bxfi_arena_chunk {
     intptr_t addr;
@@ -38,19 +38,19 @@ struct bxfi_arena_chunk {
     intptr_t next;
 };
 
-# ifdef BXF_ARENA_REOPEN_SHM
-#  ifdef BXF_ARENA_FILE_BACKED
-#   define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena__") + 31)
-#  else
-#   define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena__") + 31)
-#  endif
+#ifdef BXF_ARENA_REOPEN_SHM
+# ifdef BXF_ARENA_FILE_BACKED
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena__") + 31)
 # else
-#  ifdef BXF_ARENA_FILE_BACKED
-#   define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena_") + 11)
-#  else
-#   define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena_") + 11)
-#  endif
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena__") + 31)
 # endif
+#else
+# ifdef BXF_ARENA_FILE_BACKED
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/tmp/bxf_arena_") + 11)
+# else
+#  define BXFI_ARENA_NAME_SIZE (sizeof ("/bxf_arena_") + 11)
+# endif
+#endif
 
 struct bxf_arena {
     void *addr;
@@ -59,9 +59,9 @@ struct bxf_arena {
     int flags;
     bxf_fhandle handle;
 
-# ifdef BXF_ARENA_REOPEN_SHM
+#ifdef BXF_ARENA_REOPEN_SHM
     char name[BXFI_ARENA_NAME_SIZE];
-# endif
+#endif
 };
 
 int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena);

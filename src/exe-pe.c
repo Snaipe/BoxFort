@@ -27,17 +27,18 @@
 #include <tlhelp32.h>
 
 #ifdef _MSC_VER
-#include <malloc.h>
+# include <malloc.h>
 #endif
 
 static void *get_main_addr(void)
 {
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE,
             GetCurrentProcessId());
+
     if (snap == INVALID_HANDLE_VALUE)
         return NULL;
 
-    MODULEENTRY32 mod = { .dwSize = sizeof(MODULEENTRY32) };
+    MODULEENTRY32 mod = { .dwSize = sizeof (MODULEENTRY32) };
     for (BOOL more = Module32First(snap, &mod); more;
             more = Module32Next(snap, &mod))
     {
@@ -57,33 +58,34 @@ extern void *bxfi_trampoline_end;
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
     void *addr = get_main_addr();
+
     if (!addr)
         return -1;
 
 #if defined (BXF_ARCH_x86) || defined (BXF_ARCH_x86_64)
     /* If we got stuck on a jmp table entry we need to follow the trail */
-    if (*(char *)addr == (char)0xE9)
-        addr = (char *)addr + *(DWORD *)((char *) addr + 1) + 5;
+    if (*(char *) addr == (char) 0xE9)
+        addr = (char *) addr + *(DWORD *) ((char *) addr + 1) + 5;
 #endif
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    uintptr_t size = (uintptr_t)&bxfi_trampoline_end
-                   - (uintptr_t)&bxfi_trampoline;
+    uintptr_t size = (uintptr_t) &bxfi_trampoline_end
+            - (uintptr_t) &bxfi_trampoline;
 
 #ifndef _MSC_VER
-    char opcodes[size]; // VLA
+    char opcodes[size]; /* VLA */
 #else
     char *opcodes = alloca(size);
 #endif
 
     memcpy(opcodes, &bxfi_trampoline, size);
 
-    uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr
-                         - (uintptr_t)&bxfi_trampoline;
+    uintptr_t jmp_offset = (uintptr_t) &bxfi_trampoline_addr
+            - (uintptr_t) &bxfi_trampoline;
 
     /* The trampoline code is a jump followed by an aligned pointer value --
        after copying the jmp opcode, we write this pointer value. */
-    *(uintptr_t *)(&opcodes[jmp_offset]) = (uintptr_t)new_main;
+    *(uintptr_t *) (&opcodes[jmp_offset]) = (uintptr_t) new_main;
 
     void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
@@ -99,8 +101,9 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
 {
     MEMORY_BASIC_INFORMATION mbi;
-    if (VirtualQuery(addr, &mbi, sizeof(mbi)))
-        return (HMODULE)mbi.AllocationBase;
+
+    if (VirtualQuery(addr, &mbi, sizeof (mbi)))
+        return (HMODULE) mbi.AllocationBase;
     return BXFI_INVALID_LIB;
 }
 
@@ -114,6 +117,7 @@ bxfi_exe_lib bxfi_lib_from_name(const char *name)
 const char *bxfi_lib_name(bxfi_exe_lib lib)
 {
     char *out = LocalAlloc(LMEM_FIXED, MAX_PATH);
+
     if (GetModuleFileNameA(lib, out, MAX_PATH))
         return out;
     LocalFree(out);
@@ -122,5 +126,5 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
 
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
 {
-    return (size_t)lib;
+    return (size_t) lib;
 }

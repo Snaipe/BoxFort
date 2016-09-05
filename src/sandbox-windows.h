@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 #ifndef SANDBOX_WINDOWS_H_
-# define SANDBOX_WINDOWS_H_
+#define SANDBOX_WINDOWS_H_
 
-# include <windows.h>
-# include "context.h"
+#include <windows.h>
+#include "context.h"
 
 struct bxfi_context {
     size_t total_sz;

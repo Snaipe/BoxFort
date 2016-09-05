@@ -22,9 +22,9 @@
  * THE SOFTWARE.
  */
 #ifndef TIMESTAMP_H_
-# define TIMESTAMP_H_
+#define TIMESTAMP_H_
 
-# include <stdint.h>
+#include <stdint.h>
 
 uint64_t bxfi_timestamp(void);
 uint64_t bxfi_timestamp_monotonic(void);

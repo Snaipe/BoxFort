@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 #ifndef CONTEXT_H_
-# define CONTEXT_H_
+#define CONTEXT_H_
 
-# include "addr.h"
-# include "arena.h"
+#include "addr.h"
+#include "arena.h"
 
 struct bxf_context {
     bxf_arena arena;
@@ -50,9 +50,9 @@ struct bxfi_ctx_arena {
     int flags;
     void *base;
 
-# ifdef BXF_ARENA_REOPEN_SHM
+#ifdef BXF_ARENA_REOPEN_SHM
     char name[BXFI_ARENA_NAME_SIZE];
-# else
+#else
     bxf_fhandle handle;
 #endif
 };

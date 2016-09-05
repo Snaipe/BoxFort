@@ -22,19 +22,19 @@
  * THE SOFTWARE.
  */
 #ifndef PLT_H_
-# define PLT_H_
+#define PLT_H_
 
-# include <stddef.h>
+#include <stddef.h>
 
-# include "config.h"
+#include "config.h"
 
-# if defined BXF_EXE_FMT_ELF
-#  include "exe-elf.h"
-# elif defined BXF_EXE_FMT_PE
-#  include "exe-pe.h"
-# elif defined BXF_EXE_FMT_MACH_O
-#  include "exe-mach-o.h"
-# endif
+#if defined BXF_EXE_FMT_ELF
+# include "exe-elf.h"
+#elif defined BXF_EXE_FMT_PE
+# include "exe-pe.h"
+#elif defined BXF_EXE_FMT_MACH_O
+# include "exe-mach-o.h"
+#endif
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
 bxfi_exe_lib bxfi_lib_from_addr(const void *addr);

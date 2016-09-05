@@ -22,12 +22,14 @@
  * THE SOFTWARE.
  */
 #ifndef SANDBOX_H_
-# define SANDBOX_H_
+#define SANDBOX_H_
 
-# include "boxfort.h"
-# include "config.h"
+#include "boxfort.h"
+#include "config.h"
 
-# include BXFI_STR(sandbox-BXF_OS_FAMILY.h)
+/* *INDENT-OFF* - formatters try to add spaces here */
+#include BXFI_STR(sandbox-BXF_OS_FAMILY.h)
+/* *INDENT-ON* */
 
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
@@ -36,21 +38,21 @@ int bxfi_check_sandbox_ctx(void);
 int bxfi_init_sandbox_ctx(struct bxfi_map *map);
 int bxfi_term_sandbox_ctx(struct bxfi_map *map);
 
-# if defined(_MSC_VER)
-#  define BXFI_INITIALIZER_(Fn, Prefix) \
-        static void Fn(void); \
-        __pragma(section(".CRT$XCU",read)) \
-        __declspec(allocate(".CRT$XCU")) void (*Fn ## _init)(void) = Fn; \
-        __pragma(comment(linker,"/include:" Prefix #Fn "_init"))
-#  ifdef _WIN64
-#   define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn,"")
-#  else
-#   define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn,"_")
-#  endif
-# elif defined (__GNUC__)
-#  define BXFI_INITIALIZER(...) __attribute__((constructor))
+#if defined (_MSC_VER)
+# define BXFI_INITIALIZER_(Fn, Prefix)                              \
+    static void Fn(void);                                           \
+    __pragma(section(".CRT$XCU", read))                             \
+    __declspec(allocate(".CRT$XCU")) void(*Fn ## _init)(void) = Fn; \
+    __pragma(comment(linker, "/include:" Prefix #Fn "_init"))
+# ifdef _WIN64
+#  define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn, "")
 # else
-#  error Compiler not supported
+#  define BXFI_INITIALIZER(Fn) BXFI_INITIALIZER_(Fn, "_")
 # endif
+#elif defined (__GNUC__)
+# define BXFI_INITIALIZER(...) __attribute__((constructor))
+#else
+# error Compiler not supported
+#endif
 
 #endif /* !SANDBOX_H_ */

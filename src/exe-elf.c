@@ -47,18 +47,25 @@ typedef Elf64_Sxword ElfSWord;
 # error Unsupported architecture
 #endif
 
+typedef ElfW (Addr) ElfAddr;
+typedef ElfW (Dyn) ElfDyn;
+typedef ElfW (Sym) ElfSym;
+typedef ElfW (Word) ElfWWord;
+typedef ElfW (Off) ElfOff;
+
 extern char **environ;
 
 static void *lib_dt_lookup(bxfi_exe_lib lib, ElfSWord tag)
 {
-    ElfW(Addr) base =(ElfW(Addr)) lib->l_addr;
-    for (const ElfW(Dyn) *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
+    ElfAddr base = (ElfAddr) lib->l_addr;
+
+    for (const ElfDyn *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
         if (dyn->d_tag == tag) {
             if (dyn->d_un.d_ptr >= base
                     && (dyn->d_un.d_ptr >> (BXF_BITS - 8)) ^ 0xff)
-                return (void*) dyn->d_un.d_ptr;
+                return (void *) dyn->d_un.d_ptr;
             else
-                return (char*) base + dyn->d_un.d_ptr;
+                return (char *) base + dyn->d_un.d_ptr;
         }
     }
     return NULL;
@@ -66,18 +73,19 @@ static void *lib_dt_lookup(bxfi_exe_lib lib, ElfSWord tag)
 
 static ElfWord lib_dt_lookup_val(bxfi_exe_lib lib, ElfSWord tag)
 {
-    for (const ElfW(Dyn) *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
+    for (const ElfDyn *dyn = lib->l_ld; dyn->d_tag != DT_NULL; ++dyn) {
         if (dyn->d_tag == tag)
             return dyn->d_un.d_val;
     }
-    return (ElfWord) -1;
+    return (ElfWord) - 1;
 }
 
 #if !defined HAVE__R_DEBUG
 static int find_dynamic(struct dl_phdr_info *info, size_t size, void *data)
 {
-    ElfW(Addr) *ctx = data;
-    for (ElfW(Off) i = 0; i < info->dlpi_phnum; ++i) {
+    ElfAddr *ctx = data;
+
+    for (ElfOff i = 0; i < info->dlpi_phnum; ++i) {
         if (info->dlpi_phdr[i].p_type == PT_DYNAMIC) {
             *ctx = info->dlpi_addr + info->dlpi_phdr[i].p_vaddr;
             return 1;
@@ -88,7 +96,7 @@ static int find_dynamic(struct dl_phdr_info *info, size_t size, void *data)
 
 static struct r_debug *r_debug_from_dynamic(void *dynamic)
 {
-    for (const ElfW(Dyn) *dyn = dynamic; dyn->d_tag != DT_NULL; ++dyn) {
+    for (const ElfDyn *dyn = dynamic; dyn->d_tag != DT_NULL; ++dyn) {
         if (dyn->d_tag == DT_DEBUG)
             return (struct r_debug *) dyn->d_un.d_ptr;
     }
@@ -98,10 +106,10 @@ static struct r_debug *r_debug_from_dynamic(void *dynamic)
 
 static struct r_debug *get_r_debug(void)
 {
-    // Find our own r_debug
+    /* Find our own r_debug */
     struct r_debug *dbg = NULL;
 
-    // First use some known shortcuts
+    /* First use some known shortcuts */
 #if defined HAVE__R_DEBUG
     dbg = &_r_debug;
 #elif defined HAVE__DYNAMIC
@@ -109,16 +117,19 @@ static struct r_debug *get_r_debug(void)
 #endif
 
 #if !defined HAVE__R_DEBUG
-    // If there are no available shortcuts, we manually query our own phdrs
+    /* If there are no available shortcuts, we manually query our own phdrs */
+
+    /* *INDENT-OFF* (formatters cannot handle this part of the code) */
 # if defined HAVE__DYNAMIC
     if (!dbg) {
 # endif
-        ElfW(Addr) dynamic;
+        ElfAddr dynamic;
         if (dl_iterate_phdr(find_dynamic, &dynamic) > 0)
-            dbg = r_debug_from_dynamic((void*) dynamic);
+            dbg = r_debug_from_dynamic((void *) dynamic);
 # if defined HAVE__DYNAMIC
     }
 # endif
+    /* *INDENT-ON* */
 #endif
 
     return dbg;
@@ -126,15 +137,17 @@ static struct r_debug *get_r_debug(void)
 
 static bxfi_exe_ctx init_exe_ctx(void)
 {
-    static struct r_debug *dbg = (void*) -1;
-    if (dbg == (void*) -1)
+    static struct r_debug *dbg = (void *) -1;
+
+    if (dbg == (void *) -1)
         dbg = get_r_debug();
     return dbg;
 }
 
-static unsigned long elf_hash (const char *s)
+static unsigned long elf_hash(const char *s)
 {
     unsigned long h = 0, high;
+
     while (*s) {
         h = (h << 4) + (unsigned char) *s++;
         if ((high = h & 0xf0000000))
@@ -144,36 +157,36 @@ static unsigned long elf_hash (const char *s)
     return h;
 }
 
-static ElfW(Sym) *elf_hash_find(ElfW(Word) *hash, ElfW(Sym) *symtab,
-    const char *strtab, const char *name)
+static ElfSym *elf_hash_find(ElfWWord *hash, ElfSym *symtab,
+        const char *strtab, const char *name)
 {
     struct {
-        ElfW(Word) nb_buckets;
-        ElfW(Word) nb_chains;
-    } *h_info = (void*) hash;
+        ElfWWord nb_buckets;
+        ElfWWord nb_chains;
+    } *h_info = (void *) hash;
 
-    ElfW(Word) *buckets = (ElfW(Word)*) (h_info + 1);
-    ElfW(Word) *chains = (ElfW(Word)*) (h_info + 1) + h_info->nb_buckets;
+    ElfWWord *buckets = (ElfWWord *) (h_info + 1);
+    ElfWWord *chains  = (ElfWWord *) (h_info + 1) + h_info->nb_buckets;
 
     unsigned long idx = elf_hash(name) % h_info->nb_buckets;
 
-    for (ElfW(Word) si = buckets[idx]; si != STN_UNDEF; si = chains[si]) {
+    for (ElfWWord si = buckets[idx]; si != STN_UNDEF; si = chains[si]) {
         if (!strcmp(&strtab[symtab[si].st_name], name))
             return &symtab[si];
     }
     return NULL;
 }
 
-static ElfW(Sym) *dynsym_lookup(bxfi_exe_lib lib, const char *name)
+static ElfSym *dynsym_lookup(bxfi_exe_lib lib, const char *name)
 {
-    ElfW(Word) *hash    = lib_dt_lookup(lib, DT_HASH);
-    ElfW(Sym) *symtab   = lib_dt_lookup(lib, DT_SYMTAB);
-    const char *strtab  = lib_dt_lookup(lib, DT_STRTAB);
+    ElfWWord *hash = lib_dt_lookup(lib, DT_HASH);
+    ElfSym *symtab = lib_dt_lookup(lib, DT_SYMTAB);
+    const char *strtab = lib_dt_lookup(lib, DT_STRTAB);
 
     if (!hash || !symtab || !strtab)
         return NULL;
 
-    return elf_hash_find (hash, symtab, strtab, name);
+    return elf_hash_find(hash, symtab, strtab, name);
 }
 
 extern int main(void);
@@ -189,7 +202,8 @@ static void *get_main_addr(bxfi_exe_ctx ctx)
 
     /* First, do a fast lookup in the dynamic symbol hash table to get
        the PLT address if we have a dynamic symbol */
-    ElfW(Sym) *sym = dynsym_lookup(lm, "main");
+    ElfSym *sym = dynsym_lookup(lm, "main");
+
     if (sym)
         return (void *) (sym->st_value + lm->l_addr);
 
@@ -202,23 +216,27 @@ extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
 #define PAGE_SIZE 4096
+#define BXFI_TRAMPOLINE_SIZE          \
+    ((uintptr_t) &bxfi_trampoline_end \
+    - (uintptr_t) &bxfi_trampoline)
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
     void *addr = get_main_addr(init_exe_ctx());
+
     if (!addr)
         return -1;
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    char opcodes[(uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline];
+    char opcodes[BXFI_TRAMPOLINE_SIZE];
     memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
 
-    uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr
-                         - (uintptr_t)&bxfi_trampoline;
+    uintptr_t jmp_offset = (uintptr_t) &bxfi_trampoline_addr
+            - (uintptr_t) &bxfi_trampoline;
 
     /* The trampoline code is a jump followed by an aligned pointer value --
        after copying the jmp opcode, we write this pointer value. */
-    *(uintptr_t *)(&opcodes[jmp_offset]) = (uintptr_t)new_main;
+    *(uintptr_t *) (&opcodes[jmp_offset]) = (uintptr_t) new_main;
 
     void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
@@ -235,6 +253,7 @@ bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
     bxfi_exe_ctx ctx = init_exe_ctx();
 
     struct link_map *lo = ctx->r_map;
+
     for (struct link_map *lm = lo; lm; lm = lm->l_next) {
         if (addr >= (void *) lm->l_addr && lo->l_addr < lm->l_addr)
             lo = lm;
@@ -245,6 +264,7 @@ bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
 bxfi_exe_lib bxfi_lib_from_name(const char *name)
 {
     bxfi_exe_ctx ctx = init_exe_ctx();
+
     for (struct link_map *lm = ctx->r_map; lm; lm = lm->l_next) {
         const char *lname = bxfi_lib_name(lm);
         if (!strcmp(lname, name))
@@ -266,9 +286,9 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
     if (lib->l_name[0])
         return lib->l_name;
 
-    const char *strtab  = lib_dt_lookup(lib, DT_STRTAB);
+    const char *strtab = lib_dt_lookup(lib, DT_STRTAB);
     ElfWord soname_off = lib_dt_lookup_val(lib, DT_SONAME);
-    if (!strtab || soname_off == (ElfWord) -1)
+    if (!strtab || soname_off == (ElfWord) - 1)
         return NULL;
 
     return &strtab[soname_off];

@@ -34,11 +34,12 @@
 static int bxfi_main(void)
 {
     struct bxfi_map local_ctx;
+
     if (bxfi_init_sandbox_ctx(&local_ctx) < 0)
         abort();
 
     struct bxfi_addr addr = {
-        .soname = (char *)(local_ctx.ctx + 1),
+        .soname = (char *) (local_ctx.ctx + 1),
         .addr   = local_ctx.ctx->fn,
     };
     bxf_fn *fn = bxfi_denormalize_fnaddr(&addr);
@@ -80,8 +81,8 @@ int bxf_spawn_struct(bxf_instance **out, bxf_spawn_params params)
 
     int rc;
     if ((rc = bxfi_exec(out, sandbox, 1, params->fn,
-            params->preexec, params->callback,
-            params->user, params->user_dtor)))
+                    params->preexec, params->callback,
+                    params->user, params->user_dtor)))
         free(sandbox);
     return rc;
 }
@@ -90,6 +91,7 @@ int bxf_run_struct(bxf_spawn_params params)
 {
     bxf_instance *box;
     int rc;
+
     if ((rc = bxf_spawn_struct(&box, params)))
         return rc;
 

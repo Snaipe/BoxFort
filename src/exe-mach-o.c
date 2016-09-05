@@ -40,13 +40,13 @@ typedef struct mach_header mach_hdr;
 typedef struct nlist sym;
 typedef struct section section;
 typedef struct segment_command segment_cmd;
-#define BXF_LC_SEGMENT LC_SEGMENT
+# define BXF_LC_SEGMENT LC_SEGMENT
 #elif BXF_BITS == 64
 typedef struct mach_header_64 mach_hdr;
 typedef struct nlist_64 sym;
 typedef struct section_64 section;
 typedef struct segment_command_64 segment_cmd;
-#define BXF_LC_SEGMENT LC_SEGMENT_64
+# define BXF_LC_SEGMENT LC_SEGMENT_64
 #else
 # error Unsupported architecture
 #endif
@@ -65,22 +65,27 @@ extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
+#define BXFI_TRAMPOLINE_SIZE          \
+    ((uintptr_t) &bxfi_trampoline_end \
+    - (uintptr_t) &bxfi_trampoline)
+
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
     void *addr = get_main_addr();
+
     if (!addr)
         return -1;
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    char opcodes[(uintptr_t)&bxfi_trampoline_end - (uintptr_t)&bxfi_trampoline];
+    char opcodes[BXFI_TRAMPOLINE_SIZE];
     memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
 
-    uintptr_t jmp_offset = (uintptr_t)&bxfi_trampoline_addr
-                         - (uintptr_t)&bxfi_trampoline;
+    uintptr_t jmp_offset = (uintptr_t) &bxfi_trampoline_addr
+            - (uintptr_t) &bxfi_trampoline;
 
     /* The trampoline code is a jump followed by an aligned pointer value --
        after copying the jmp opcode, we write this pointer value. */
-    *(uintptr_t *)(&opcodes[jmp_offset]) = (uintptr_t)new_main;
+    *(uintptr_t *) (&opcodes[jmp_offset]) = (uintptr_t) new_main;
 
     void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
@@ -97,6 +102,7 @@ bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
     bxfi_exe_lib nb_images = _dyld_image_count();
+
     for (bxfi_exe_lib i = 0; i < nb_images; ++i) {
         const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(i);
         intptr_t slide = bxfi_exe_get_vmslide(i);
@@ -106,7 +112,7 @@ bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
             if (lc->cmd == BXF_LC_SEGMENT) {
                 const segment_cmd *sc = (void *) lc;
                 uintptr_t start = sc->vmaddr + slide;
-                uintptr_t end = start + sc->vmsize - 1;
+                uintptr_t end   = start + sc->vmsize - 1;
 
                 if ((uintptr_t) addr >= start && (uintptr_t) addr <= end)
                     return i;

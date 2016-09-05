@@ -22,21 +22,21 @@
  * THE SOFTWARE.
  */
 #ifndef PLT_ELF_H_
-# define PLT_ELF_H_
+#define PLT_ELF_H_
 
-# include <link.h>
+#include <link.h>
 
-# ifdef __FreeBSD__
-#  include <sys/elf_generic.h>
-#  define ElfW(type)    ElfW_(Elf, type)
-#  define ElfW_(e,t)    ElfW__(e, _##t)
-#  define ElfW__(e,t)   e##t
-# endif
+#ifdef __FreeBSD__
+# include <sys/elf_generic.h>
+# define ElfW(type) ElfW_(Elf, type)
+# define ElfW_(e, t) ElfW__(e, _ ## t)
+# define ElfW__(e, t) e ## t
+#endif
 
 typedef struct link_map *bxfi_exe_lib;
 typedef struct r_debug *bxfi_exe_ctx;
 typedef void (bxfi_exe_fn)(void);
 
-# define BXFI_INVALID_LIB ((bxfi_exe_lib) 0)
+#define BXFI_INVALID_LIB ((bxfi_exe_lib) 0)
 
 #endif /* !PLT_ELF_H_ */

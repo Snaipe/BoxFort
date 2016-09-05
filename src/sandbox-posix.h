@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 #ifndef SANDBOX_POSIX_H_
-# define SANDBOX_POSIX_H_
+#define SANDBOX_POSIX_H_
 
-# include <pthread.h>
-# include <stddef.h>
-# include <stdint.h>
+#include <pthread.h>
+#include <stddef.h>
+#include <stdint.h>
 
-# include "context.h"
+#include "context.h"
 
 struct bxfi_context {
     size_t total_sz;

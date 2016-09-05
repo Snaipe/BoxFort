@@ -22,14 +22,14 @@
  * THE SOFTWARE.
  */
 #ifndef EXE_PE_H_
-# define EXE_PE_H_
+#define EXE_PE_H_
 
-# include <windows.h>
+#include <windows.h>
 
 typedef HMODULE bxfi_exe_lib;
 typedef void *bxfi_exe_ctx;
 typedef void (bxfi_exe_fn)(void);
 
-# define BXFI_INVALID_LIB ((bxfi_exe_lib) NULL)
+#define BXFI_INVALID_LIB ((bxfi_exe_lib) NULL)
 
 #endif /* !EXE_PE_H_ */

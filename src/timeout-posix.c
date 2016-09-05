@@ -72,15 +72,15 @@ static void to_timespec(double timeout, struct timespec *timeo)
 {
     static const uint64_t nanosecs = 1000000000;
 
-    uint64_t to_ns = (timeout - (uint64_t)timeout) * nanosecs;
+    uint64_t to_ns = (timeout - (uint64_t) timeout) * nanosecs;
     uint64_t to_s  = timeout;
 
-#if defined(HAVE_CLOCK_GETTIME)
+#if defined (HAVE_CLOCK_GETTIME)
     clock_gettime(CLOCK_REALTIME, timeo);
     uint64_t new_nsec = (timeo->tv_nsec + to_ns) % nanosecs;
     timeo->tv_sec += to_s + (timeo->tv_nsec + to_ns) / nanosecs;
     timeo->tv_nsec = new_nsec;
-#elif defined(HAVE_GETTIMEOFDAY)
+#elif defined (HAVE_GETTIMEOFDAY)
     struct timeval tv;
     gettimeofday(&tv, NULL);
 
@@ -133,7 +133,7 @@ end:
 void bxfi_reset_timeout_killer(void)
 {
     pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t cond   = PTHREAD_COND_INITIALIZER;
 
     memcpy(&self.sync, &mutex, sizeof (mutex));
     memcpy(&self.cond, &cond, sizeof (cond));
@@ -148,12 +148,13 @@ int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
     int rc;
 
     struct bxfi_timeout_request *req = calloc(1, sizeof (*req));
+
     if (!req)
         return -ENOMEM;
 
     to_timespec(timeout, &req->timeout);
 
-    req->sb = instance;
+    req->sb  = instance;
     req->pid = instance->props.pid;
 
     pthread_mutex_lock(&self.sync);
@@ -194,19 +195,18 @@ void bxfi_cancel_timeout(struct bxfi_sandbox *instance)
     struct bxfi_timeout_request *volatile *nptr = &self.requests;
     for (struct bxfi_timeout_request *r = self.requests; r; r = r->next) {
         if (r->pid == (pid_t) instance->props.pid) {
-            *nptr = r->next;
+            *nptr   = r->next;
             r->next = self.cancelled;
             self.cancelled = r;
-            r->cancelled = cancelled = 1;
+            r->cancelled   = cancelled = 1;
         }
         nptr = &r->next;
     }
     if (cancelled) {
         pthread_cond_broadcast(&self.cond);
         if (!self.requests) {
-            while (self.cancelled && !self.requests) {
+            while (self.cancelled && !self.requests)
                 pthread_cond_wait(&self.termcond, &self.sync);
-            }
             if (self.requests)
                 goto end;
             if (self.thread_active) {

@@ -39,9 +39,9 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
-#if defined(HAVE_CLOCK_GETTIME)
+#if defined (HAVE_CLOCK_GETTIME)
 # include <time.h>
-#elif defined(HAVE_GETTIMEOFDAY)
+#elif defined (HAVE_GETTIMEOFDAY)
 # include <sys/time.h>
 #endif
 
@@ -63,7 +63,7 @@
 #ifndef HAVE_ENVIRON
 # ifdef __APPLE__
 #  include <crt_externs.h>
-#  define environ (*_NSGetEnviron ())
+#  define environ (*_NSGetEnviron())
 # else
 extern char **environ;
 # endif
@@ -114,7 +114,7 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
     if (WIFSIGNALED(status))
         s->props.status.signal = WTERMSIG(status);
     s->props.status.stopped = WIFSTOPPED(status);
-    s->props.status.alive = WIFSTOPPED(status);
+    s->props.status.alive   = WIFSTOPPED(status);
 
     if (!s->props.status.alive && s->callback)
         s->callback(&s->props);
@@ -127,10 +127,11 @@ static struct bxfi_sandbox *reap_child(pid_t pid,
 static void remove_alive_by_pid(bxf_pid pid)
 {
     struct bxfi_sandbox **prev = &self.alive;
+
     for (struct bxfi_sandbox *s = self.alive; s; s = s->next) {
         if (s->wait_pid == (pid_t) pid) {
-            *prev = s->next;
-            s->next = self.dead;
+            *prev     = s->next;
+            s->next   = self.dead;
             self.dead = s;
             break;
         }
@@ -141,6 +142,7 @@ static void remove_alive_by_pid(bxf_pid pid)
 static void *child_pump_fn(void *nil)
 {
     int wflags = WEXITED | WNOWAIT;
+
     for (;;) {
         pthread_mutex_lock(&self.sync);
         while (!self.alive)
@@ -160,7 +162,7 @@ static void *child_pump_fn(void *nil)
             continue;
 
         uint64_t mts_end = bxfi_timestamp_monotonic();
-        uint64_t ts_end = bxfi_timestamp();
+        uint64_t ts_end  = bxfi_timestamp();
 
         for (;;) {
             memset(&infop, 0, sizeof (infop));
@@ -229,6 +231,7 @@ error:;
 static void bxfi_unmap_local_ctx(struct bxfi_map *map)
 {
     size_t sz = map->ctx->total_sz;
+
     munmap(map->ctx, sz);
     close(map->fd);
 }
@@ -243,6 +246,7 @@ int bxfi_init_sandbox_ctx(struct bxfi_map *map)
     const char *ctx_path = getenv("BXFI_MAP");
 
     int fd = shm_open(ctx_path, O_RDWR, 0600);
+
     if (fd == -1)
         goto error;
 
@@ -277,7 +281,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     /* This is either our PID or the debugging server's PID */
     pid_t control_pid = map->ctx->pid;
 
-    map->ctx->ok = 1;
+    map->ctx->ok  = 1;
     map->ctx->pid = getpid();
     bxfi_unmap_local_ctx(map);
 
@@ -293,7 +297,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 
 static int get_exe_path(char *buf, size_t sz)
 {
-#if defined(__linux__)
+#if defined (__linux__)
     const char *self = "/proc/self/exe";
 #elif defined __NetBSD__
     const char *self = "/proc/curproc/exe";
@@ -386,10 +390,10 @@ static int setup_limit(int limit, size_t iquota, size_t quota)
     return 0;
 }
 
-#define setup_limit(Limit, Quota)   \
-        (setup_limit((Limit),       \
-            sandbox->iquotas.Quota, \
-            sandbox->quotas.Quota))
+#define setup_limit(Limit, Quota) \
+    (setup_limit((Limit),         \
+    sandbox->iquotas.Quota,       \
+    sandbox->quotas.Quota))
 
 static int setup_limits(bxf_sandbox *sandbox)
 {
@@ -427,6 +431,7 @@ static int nocloexec_fd(bxf_fhandle fd, void *ctx)
 static int inherit_fd(bxf_fhandle fd, void *ctx)
 {
     int rc = nocloexec_fd(fd, NULL);
+
     if (rc < 0)
         return rc;
 
@@ -438,6 +443,7 @@ static int inherit_fd(bxf_fhandle fd, void *ctx)
 static int setup_inheritance(bxf_sandbox *sandbox)
 {
     bxf_context ctx = sandbox->inherit.context;
+
     if (sandbox->inherit.files) {
         int rc = 0;
         if (ctx)
@@ -453,7 +459,7 @@ static int setup_inheritance(bxf_sandbox *sandbox)
             return -errno;
 
         memset(do_close, 1, rl.rlim_cur);
-        do_close[STDIN_FILENO] = 0;
+        do_close[STDIN_FILENO]  = 0;
         do_close[STDOUT_FILENO] = 0;
         do_close[STDERR_FILENO] = 0;
 
@@ -507,10 +513,10 @@ static void postfork_child(void)
         pthread_join(self.child_pump, NULL);
 
     for (struct bxfi_sandbox *s = self.alive; s; s = self.alive) {
-        memset((void*)&s->props.status, 0, sizeof (s->props.status));
+        memset((void *) &s->props.status, 0, sizeof (s->props.status));
         self.alive = s->next;
-        s->next = self.dead;
-        self.dead = s;
+        s->next    = self.dead;
+        self.dead  = s;
     }
 
     bxfi_reset_timeout_killer();
@@ -548,7 +554,7 @@ static int find_exe(const char *progname, char *out, size_t size)
 {
     char *sptr = NULL;
     char *path = strdup(getenv("PATH"));
-    char *p = strtok_r(path, ":", &sptr);
+    char *p    = strtok_r(path, ":", &sptr);
 
     while (p) {
         snprintf(out, size, "%s/%s", *p ? p : ".", progname);
@@ -570,8 +576,9 @@ static int find_exe(const char *progname, char *out, size_t size)
 static char **dupenv(char **concat)
 {
     size_t len = 0, clen = 0;
-    for (char **e = environ; *e; ++e, ++len);
-    for (char **e = concat; *e; ++e, ++clen);
+
+    for (char **e = environ; *e; ++e, ++len) ;
+    for (char **e = concat; *e; ++e, ++clen) ;
 
     char **dupe = malloc(sizeof (void *) * (len + clen + 1));
     memcpy(dupe, concat, clen * sizeof (void *));
@@ -615,7 +622,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (!instance)
         goto err;
     *instance = (struct bxfi_sandbox) {
-        .mantled = mantled,
+        .mantled  = mantled,
         .callback = callback,
         .user = user,
         .user_dtor = user_dtor,
@@ -637,7 +644,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             .sandbox = sandbox,
             .pid = pid,
             .status.alive = 1,
-            .time.start = bxfi_timestamp(),
+            .time.start   = bxfi_timestamp(),
             .user = instance->user,
         };
 
@@ -656,8 +663,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         if (map_rc < 0)
             goto err;
 
-        local_ctx.ctx->ok = 0;
-        local_ctx.ctx->fn = addr.addr;
+        local_ctx.ctx->ok  = 0;
+        local_ctx.ctx->fn  = addr.addr;
         local_ctx.ctx->pid = pid;
         bxf_context ictx = sandbox->inherit.context;
         if (ictx) {
@@ -685,9 +692,11 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             if (bxfi_push_timeout(instance, sandbox->quotas.runtime) < 0)
                 goto err;
 
+
         if (sandbox->iquotas.runtime > 0)
             if (bxfi_push_timeout(instance, sandbox->iquotas.runtime) < 0)
                 goto err;
+
 
         pthread_mutex_lock(&self.sync);
         /* spawn a wait thread if no sandboxes are alive right now */
@@ -766,9 +775,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 snprintf(port, sizeof (port), "*:%d", sandbox->debug.tcp);
                 break;
             default:
-                fprintf(stderr, "Could not start debugger: Unknown debugger.\n");
+                fprintf(stderr,
+                    "Could not start debugger: Unknown debugger.\n");
                 abort();
-        };
+        }
 
         char dbg_full[PATH_MAX];
         if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0) {
@@ -812,7 +822,7 @@ int bxf_term(bxf_instance *instance)
     for (struct bxfi_sandbox *s = self.dead; s; s = s->next) {
         if (s == sb) {
             *prev = s->next;
-            ok = 1;
+            ok    = 1;
             break;
         }
         prev = &s->next;
@@ -839,26 +849,26 @@ int bxf_wait(bxf_instance *instance, double timeout)
 
     static const size_t nanosecs = 1000000000;
 
-    size_t to_ns = (timeout - (size_t)timeout) * nanosecs;
+    size_t to_ns = (timeout - (size_t) timeout) * nanosecs;
     size_t to_s  = timeout;
 
     struct timespec timeo;
 
-#if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
+#if defined (HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)
     timeo = (struct timespec) { .tv_sec = to_ns, .tv_nsec = to_s };
 
     typedef int (*const f_timedwait)(pthread_cond_t *cond,
-           pthread_mutex_t *mutex,
-           const struct timespec *abstime);
+            pthread_mutex_t *mutex,
+            const struct timespec *abstime);
 
-    static f_timedwait pthread_cond_timedwait 
-        = pthread_cond_timedwait_relative_np;
-#elif defined(HAVE_CLOCK_GETTIME)
+    static f_timedwait pthread_cond_timedwait =
+            pthread_cond_timedwait_relative_np;
+#elif defined (HAVE_CLOCK_GETTIME)
     clock_gettime(CLOCK_REALTIME, &timeo);
     size_t new_nsec = (timeo.tv_nsec + to_ns) % nanosecs;
     timeo.tv_sec += to_s + (timeo.tv_nsec + to_ns) / nanosecs;
     timeo.tv_nsec = new_nsec;
-#elif defined(HAVE_GETTIMEOFDAY)
+#elif defined (HAVE_GETTIMEOFDAY)
     struct timeval tv;
     gettimeofday(&tv, NULL);
 

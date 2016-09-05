@@ -31,11 +31,12 @@
 int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to)
 {
     bxfi_exe_lib lib = bxfi_lib_from_addr(addr);
+
     if (lib == BXFI_INVALID_LIB)
         return -EINVAL;
     uintptr_t slide = bxfi_exe_get_vmslide(lib);
 
-    to->addr = (char *) addr - slide;
+    to->addr   = (char *) addr - slide;
     to->soname = bxfi_lib_name(lib);
 
     if (to->soname == NULL)
@@ -46,6 +47,7 @@ int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to)
 void *bxfi_denormalize_addr(struct bxfi_addr *addr)
 {
     bxfi_exe_lib lib = bxfi_lib_from_name(addr->soname);
+
     if (lib == BXFI_INVALID_LIB)
         return NULL;
     uintptr_t slide = bxfi_exe_get_vmslide(lib);

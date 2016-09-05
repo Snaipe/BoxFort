@@ -22,38 +22,38 @@
  * THE SOFTWARE.
  */
 #ifndef BOXFORT_H_
-# define BOXFORT_H_
+#define BOXFORT_H_
 
-# include <stdio.h>
-# include <stddef.h>
-# include <math.h>
-# include <stdint.h>
+#include <stdio.h>
+#include <stddef.h>
+#include <math.h>
+#include <stdint.h>
 
-# if !defined BXF_STATIC_LIB && !defined BXF_API
-#  if defined _WIN32 || defined __CYGWIN__
-#   ifdef BXF_BUILDING_LIB
-#    ifdef __GNUC__
-#     define BXF_API __attribute__((dllexport))
-#    else
-#     define BXF_API __declspec(dllexport)
-#    endif
+#if !defined BXF_STATIC_LIB && !defined BXF_API
+# if defined _WIN32 || defined __CYGWIN__
+#  ifdef BXF_BUILDING_LIB
+#   ifdef __GNUC__
+#    define BXF_API __attribute__((dllexport))
 #   else
-#    ifdef __GNUC__
-#     define BXF_API __attribute__((dllimport))
-#    else
-#     define BXF_API __declspec(dllimport)
-#    endif
+#    define BXF_API __declspec(dllexport)
 #   endif
 #  else
-#   if __GNUC__ >= 4
-#    define BXF_API __attribute__((visibility("default")))
+#   ifdef __GNUC__
+#    define BXF_API __attribute__((dllimport))
 #   else
-#    define BXF_API
+#    define BXF_API __declspec(dllimport)
 #   endif
 #  endif
-# elif !defined BXF_API
-#  define BXF_API
+# else
+#  if __GNUC__ >= 4
+#   define BXF_API __attribute__((visibility("default")))
+#  else
+#   define BXF_API
+#  endif
 # endif
+#elif !defined BXF_API
+# define BXF_API
+#endif
 
 /* Arena API */
 
@@ -66,12 +66,12 @@ enum {
     /**
      * Allow the arena to be resized during allocations.
      */
-    BXF_ARENA_RESIZE    = (1 << 0),
+    BXF_ARENA_RESIZE = (1 << 0),
 
     /**
      * Memory may be reclaimed with bxf_arena_free.
      */
-    BXF_ARENA_DYNAMIC   = (1 << 1),
+    BXF_ARENA_DYNAMIC = (1 << 1),
 
     /**
      * If BXF_ARENA_RESIZE is specified, allow the arena to be moved in
@@ -79,7 +79,7 @@ enum {
      *
      * All allocation operations invalidate virtual addresses inside the arena.
      */
-    BXF_ARENA_MAYMOVE   = (1 << 2),
+    BXF_ARENA_MAYMOVE = (1 << 2),
 
     /**
      * Map 1:1 the arena in the sandbox instance, exactly where the arena
@@ -88,7 +88,7 @@ enum {
      * All virtual pointers used by the parent are kept valid in the sandbox
      * instance.
      */
-    BXF_ARENA_IDENTITY  = (1 << 3),
+    BXF_ARENA_IDENTITY = (1 << 3),
 
     /**
      * The arena in the sandbox instance is mapped read-only. All write
@@ -166,7 +166,7 @@ BXF_API int bxf_context_addfnaddr(bxf_context ctx, const char *name,
         void (*fn)(void));
 
 BXF_API int bxf_context_getfnaddr(bxf_context ctx, const char *name,
-        void (**fn)(void));
+        void(**fn)(void));
 
 BXF_API int bxf_context_addfhandle(bxf_context ctx, bxf_fhandle hndl);
 
@@ -195,26 +195,26 @@ struct bxf_inheritance {
 };
 
 enum bxf_debugger {
-    BXF_DBG_NONE,   /* Do not debug the sandbox */
-    BXF_DBG_GDB,    /* Spawn with gdbserver */
-    BXF_DBG_LLDB,   /* Spawn with lldb-server */
+    BXF_DBG_NONE, /* Do not debug the sandbox */
+    BXF_DBG_GDB, /* Spawn with gdbserver */
+    BXF_DBG_LLDB, /* Spawn with lldb-server */
     BXF_DBG_WINDBG, /* Spawn with windbg (Windows only) */
 };
 
-# if defined (__clang__)
-#  define BXF_DBG_NATIVE BXF_DBG_LLDB
-# elif defined (__GNUC__)
-#  define BXF_DBG_NATIVE BXF_DBG_GDB
-# elif defined (_WIN32)
-#  define BXF_DBG_NATIVE BXF_DBG_WINDBG
-# endif
+#if defined (__clang__)
+# define BXF_DBG_NATIVE BXF_DBG_LLDB
+#elif defined (__GNUC__)
+# define BXF_DBG_NATIVE BXF_DBG_GDB
+#elif defined (_WIN32)
+# define BXF_DBG_NATIVE BXF_DBG_WINDBG
+#endif
 
 struct bxf_debug {
     enum bxf_debugger debugger;
     int tcp;
 };
 
-# define BXFI_SANDBOX_FIELDS        \
+#define BXFI_SANDBOX_FIELDS         \
     struct bxf_quotas quotas;       \
     struct bxf_quotas iquotas;      \
     struct bxf_inheritance inherit; \
@@ -274,25 +274,28 @@ struct bxf_start_params {
     bxf_callback *callback;
 };
 
-# define BXF_FOREVER INFINITY
+#define BXF_FOREVER INFINITY
 
 typedef const struct bxf_start_params *bxf_start_params;
 
-# define bxf_start(Instance, Sandbox, ...) (bxf_start_struct((Instance), \
-            (Sandbox), \
-            &(struct bxf_start_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
+#define bxf_start(Instance, Sandbox, ...) \
+    (bxf_start_struct((Instance),         \
+    (Sandbox),                            \
+    &(struct bxf_start_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
 BXF_API int bxf_start_struct(bxf_instance **instance,
         bxf_sandbox *sandbox, bxf_start_params params);
 
 BXF_API int bxf_term(bxf_instance *instance);
 BXF_API int bxf_wait(bxf_instance *instance, double timeout);
 
-# define bxf_spawn(Instance, ...) (bxf_spawn_struct((Instance), \
-            &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
+#define bxf_spawn(Instance, ...)  \
+    (bxf_spawn_struct((Instance), \
+    &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
 BXF_API int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
 
-# define bxf_run(...) (bxf_run_struct( \
-            &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
+#define bxf_run(...) \
+    (bxf_run_struct( \
+    &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
 BXF_API int bxf_run_struct(bxf_spawn_params params);
 
 #endif /* !BOXFORT_H_ */

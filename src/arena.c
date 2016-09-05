@@ -47,19 +47,19 @@
 #ifndef _WIN32
 # if BXF_BITS == 32
 #  define SPTR 4
-static void *mmap_max = (void *)0xf0000000;
+static void *mmap_max = (void *) 0xf0000000;
 # elif BXF_BITS == 64
 #  define SPTR 6
 
 /* On Linux it seems that you cannot map > 48-bit addresses */
-static void *mmap_max = (void *)0x7f0000000000;
+static void *mmap_max = (void *) 0x7f0000000000;
 # else
 #  error Platform not supported
 # endif
 
 static unsigned int mmap_seed;
-static void *mmap_base = (void*) ((uintptr_t)1 << (SPTR * 8 - 3));
-static intptr_t mmap_off = ((intptr_t)1 << ((SPTR / 2) * 8));
+static void *mmap_base   = (void *) ((uintptr_t) 1 << (SPTR * 8 - 3));
+static intptr_t mmap_off = ((intptr_t) 1 << ((SPTR / 2) * 8));
 #endif
 
 static inline void *ptr_add(void *ptr, size_t off)
@@ -67,8 +67,9 @@ static inline void *ptr_add(void *ptr, size_t off)
     return (char *) ptr + off;
 }
 
-#define chunk_next(Chunk) \
-    ((struct bxfi_arena_chunk *)((Chunk)->next ? ptr_add(*arena, (Chunk)->next) : NULL))
+#define chunk_next(Chunk)                                         \
+    ((struct bxfi_arena_chunk *) ((Chunk)->next ? ptr_add(*arena, \
+    (Chunk)->next) : NULL))
 
 #define get_free_chunks(arena) (ptr_add(*arena, (*arena)->free_chunks))
 
@@ -80,7 +81,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 
 #ifdef _WIN32
     SECURITY_ATTRIBUTES inherit = {
-        .nLength = sizeof (SECURITY_ATTRIBUTES),
+        .nLength        = sizeof (SECURITY_ATTRIBUTES),
         .bInheritHandle = TRUE,
     };
 
@@ -165,7 +166,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
             continue;
 
         for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, PAGE_SIZE)) {
+                addr = ptr_add(addr, PAGE_SIZE))
+        {
             int rc = msync(addr, PAGE_SIZE, 0);
             if (rc != -1 || errno != ENOMEM)
                 goto retry;
@@ -177,11 +179,11 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         if (a == MAP_FAILED)
             goto error;
 
-        if ((void *)a < mmap_max && (void *)a > mmap_base)
+        if ((void *) a < mmap_max && (void *) a > mmap_base)
             break;
         munmap(a, initial);
         ++tries;
-retry:;
+retry:  ;
     }
     if (tries == MAP_RETRIES)
         goto error;
@@ -189,8 +191,8 @@ retry:;
 #endif
 
     a->flags = flags;
-    a->size = initial;
-    a->addr = a;
+    a->size  = initial;
+    a->addr  = a;
     a->free_chunks = sizeof (*a);
 
 #ifdef BXF_ARENA_REOPEN_SHM
@@ -234,6 +236,7 @@ error:;
 int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena)
 {
     void *base = NULL;
+
     if (flags & BXF_ARENA_IDENTITY)
         base = *arena;
 
@@ -281,10 +284,10 @@ int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena)
     return 0;
 }
 
-
 int bxf_arena_copy(bxf_arena orig, int flags, bxf_arena *arena)
 {
     int rc = bxf_arena_init(orig->size, flags, arena);
+
     if (rc > 0) {
         memcpy(*arena + 1, orig + 1, orig->size - sizeof (orig));
         (*arena)->free_chunks = orig->free_chunks;
@@ -304,7 +307,7 @@ int bxf_arena_term(bxf_arena *arena)
     unlink((*arena)->name);
 #  else
     shm_unlink((*arena)->name);
-# endif
+#  endif
 # endif
     close((*arena)->handle);
     if (!((*arena)->flags & BXF_ARENA_KEEPMAPPED))
@@ -327,7 +330,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
     void *base = ptr_add(*arena, (*arena)->size);
     LARGE_INTEGER off = { .QuadPart = (*arena)->size };
 
-    void *addr = MapViewOfFileEx((*arena)->handle, FILE_MAP_WRITE, 
+    void *addr = MapViewOfFileEx((*arena)->handle, FILE_MAP_WRITE,
             off.HighPart, off.LowPart, newsize - size, base);
 
     if (addr != base) {
@@ -363,9 +366,9 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
         return -errno;
 
     a->addr = a;
-    *arena = a;
+    *arena  = a;
 # else
-    size_t remsz = newsize - (*arena)->size;
+    size_t remsz  = newsize - (*arena)->size;
     char *addr_hi = ptr_add(*arena, (*arena)->size);
     int move = 0;
     for (char *addr = addr_hi; remsz; remsz -= PAGE_SIZE, addr += PAGE_SIZE) {
@@ -391,7 +394,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
         *arena = a;
     } else {
         size_t remsz = newsize - (*arena)->size;
-        void *raddr = mmap(addr_hi, remsz, PROT_READ | PROT_WRITE,
+        void *raddr  = mmap(addr_hi, remsz, PROT_READ | PROT_WRITE,
                 MAP_SHARED | MAP_FIXED, (*arena)->handle, (*arena)->size);
         if (raddr == MAP_FAILED)
             return -errno;
@@ -418,7 +421,8 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
     struct bxfi_arena_chunk *c;
     for (c = get_free_chunks(arena); c; c = chunk_next(c)) {
         if ((c->size >= size && (!best || best->size > c->size))
-                || (!c->next && !best)) {
+                || (!c->next && !best))
+        {
             best = c;
             nptr_best = nptr;
         }
@@ -431,7 +435,7 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
         if (!((*arena)->flags & BXF_ARENA_RESIZE))
             return -ENOMEM;
 
-        size_t oksize = (*arena)->size + size - best->size + sizeof (*best);
+        size_t oksize  = (*arena)->size + size - best->size + sizeof (*best);
         size_t newsize = (*arena)->size;
 
         while (newsize < oksize)
@@ -452,9 +456,9 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
         .next = best->next,
     };
 
-    *nptr_best = (intptr_t) next - (intptr_t)*arena;
+    *nptr_best = (intptr_t) next - (intptr_t) *arena;
 
-    best->addr = (intptr_t)(best + 1) - (intptr_t)*arena;
+    best->addr = (intptr_t) (best + 1) - (intptr_t) *arena;
     return best->addr;
 }
 
@@ -504,7 +508,7 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
     size = align2_up(size + sizeof (struct bxfi_arena_chunk), sizeof (void *));
 
     if (!ptr || ptr <= ptr_add(*arena, sizeof (struct bxfi_arena_chunk))
-             || ptr >= ptr_add(*arena, (*arena)->size))
+            || ptr >= ptr_add(*arena, (*arena)->size))
         return -EFAULT;
 
     struct bxfi_arena_chunk *chunk = ptr;
@@ -522,7 +526,7 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
         if (!((*arena)->flags & BXF_ARENA_RESIZE))
             return -ENOMEM;
 
-        size_t oksize = (*arena)->size + size - next->size + sizeof (*next);
+        size_t oksize  = (*arena)->size + size - next->size + sizeof (*next);
         size_t newsize = (*arena)->size;
 
         while (newsize < oksize)
@@ -530,18 +534,18 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
 
         size_t oldsize = (*arena)->size;
 
-        intptr_t off = (intptr_t)*arena;
+        intptr_t off = (intptr_t) *arena;
 
         newsize = align2_up(newsize, PAGE_SIZE);
         int rc = arena_resize(arena, newsize);
         if (rc < 0)
             return rc;
 
-        off = (intptr_t)*arena - off;
+        off = (intptr_t) *arena - off;
 
-        ptr = ptr_add(ptr, off);
+        ptr   = ptr_add(ptr, off);
         chunk = ptr_add(chunk, off);
-        next = ptr_add(next, off);
+        next  = ptr_add(next, off);
 
         next->size += newsize - oldsize;
     }
@@ -552,7 +556,8 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
     /* Remove the next chunk from the free list */
     intptr_t *nptr = &(*arena)->free_chunks;
     for (struct bxfi_arena_chunk *c = get_free_chunks(arena);
-            c; c = chunk_next(c)) {
+            c; c = chunk_next(c))
+    {
         if (c == next)
             break;
         nptr = &c->next;
@@ -565,12 +570,13 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
      * merged block, do so */
     size_t asize = align2_down(chunk->size, sizeof (void *));
     if (chunk->size - asize >= align2_up(sizeof (*chunk) + 1, sizeof (void *))
-            && asize >= size) {
+            && asize >= size)
+    {
         struct bxfi_arena_chunk *next = ptr_add(chunk, size);
         *next = (struct bxfi_arena_chunk) {
             .next = *nptr,
         };
-        *nptr = (intptr_t)next - (intptr_t)*arena;
+        *nptr = (intptr_t) next - (intptr_t) *arena;
     }
     return 0;
 }
@@ -601,7 +607,8 @@ int bxf_arena_free(bxf_arena *arena, bxf_ptr p)
     intptr_t *nptr = &(*arena)->free_chunks;
     struct bxfi_arena_chunk *prev = NULL;
     for (struct bxfi_arena_chunk *c = get_free_chunks(arena);
-            c; c = chunk_next(c)) {
+            c; c = chunk_next(c))
+    {
         if (c > chunk)
             break;
         nptr = &c->next;
@@ -609,16 +616,16 @@ int bxf_arena_free(bxf_arena *arena, bxf_ptr p)
     }
 
     chunk->next = *nptr;
-    *nptr = (intptr_t)chunk -(intptr_t)*arena;
+    *nptr = (intptr_t) chunk - (intptr_t) *arena;
 
     if (prev) {
         prev->size += chunk->size;
-        prev->next = chunk->next;
+        prev->next  = chunk->next;
         chunk = prev;
     }
     if (chunk->next) {
         chunk->size += chunk_next(chunk)->size;
-        chunk->next = chunk->next;
+        chunk->next  = chunk->next;
     }
     chunk->addr = 0;
     return 0;
@@ -626,9 +633,11 @@ int bxf_arena_free(bxf_arena *arena, bxf_ptr p)
 
 int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user)
 {
-    struct bxfi_arena_chunk *c = (void *)(arena + 1);
-    for (; (void*)c < ptr_add(arena, arena->size);
-            c = ptr_add(c, c->size)) {
+    struct bxfi_arena_chunk *c = (void *) (arena + 1);
+
+    for (; (void *) c < ptr_add(arena, arena->size);
+            c = ptr_add(c, c->size))
+    {
         if (c->addr) {
             int rc = fn(ptr_add(arena, c->addr), c->size - sizeof (*c), user);
             if (rc)

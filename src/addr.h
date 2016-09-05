@@ -22,10 +22,10 @@
  * THE SOFTWARE.
  */
 #ifndef ADDR_H_
-# define ADDR_H_
+#define ADDR_H_
 
-# include "boxfort.h"
-# include "common.h"
+#include "boxfort.h"
+#include "common.h"
 
 struct bxfi_addr {
     const char *soname;

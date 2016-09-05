@@ -1,1 +1,1 @@
-# define MANGLE(x) _ ## x
+#define MANGLE(x) _ ## x

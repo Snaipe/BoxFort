@@ -22,16 +22,18 @@
  * THE SOFTWARE.
  */
 #ifndef ASM_MANGLING_H_
-# define ASM_MANGLING_H_
+#define ASM_MANGLING_H_
 
-# include "config.h"
+#include "config.h"
 
-# define MANGLING_STR_(x) #x
-# define MANGLING_STR(x) MANGLING_STR_(x)
+#define MANGLING_STR_(x) #x
+#define MANGLING_STR(x) MANGLING_STR_(x)
 
-# define MANGLING_HEADER_ mangling/BXF_MANGLING.h
-# define MANGLING_HEADER MANGLING_STR(MANGLING_HEADER_)
+/* *INDENT-OFF* - formatters try to add spaces here */
+#define MANGLING_HEADER_ mangling/BXF_MANGLING.h
+#define MANGLING_HEADER MANGLING_STR(MANGLING_HEADER_)
+/* *INDENT-ON* */
 
-# include MANGLING_HEADER
+#include MANGLING_HEADER
 
 #endif /* !ASM_MANGLING_H_ */

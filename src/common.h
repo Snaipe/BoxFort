@@ -22,20 +22,20 @@
  * THE SOFTWARE.
  */
 #ifndef COMMON_H_
-# define COMMON_H_
+#define COMMON_H_
 
-# include <stddef.h>
+#include <stddef.h>
 
-# ifdef __GNUC__
-#  define nonstd __extension__
-# else
-#  define nonstd
-# endif
+#ifdef __GNUC__
+# define nonstd __extension__
+#else
+# define nonstd
+#endif
 
-# define align2_down(v, d) ((v) & ~((d) - 1))
-# define align2_up(v, d) ((((v) - 1) & ~((d) - 1)) + (d))
+#define align2_down(v, d) ((v) & ~((d) - 1))
+#define align2_up(v, d) ((((v) - 1) & ~((d) - 1)) + (d))
 
-# define bxfi_cont(Var, Type, Member) \
-    (Var ? ((Type*) (((char*) Var) - offsetof(Type, Member))) : NULL)
+#define bxfi_cont(Var, Type, Member) \
+    (Var ? ((Type *) (((char *) Var) - offsetof(Type, Member))) : NULL)
 
 #endif /* !COMMON_H_ */

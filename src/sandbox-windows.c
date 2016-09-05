@@ -66,10 +66,11 @@ static int bxfi_create_local_ctx(struct bxfi_map *map, LPTCH name, size_t sz)
 
 int bxfi_init_sandbox_ctx(struct bxfi_map *map)
 {
-    TCHAR *env = _tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
+    TCHAR *env  = _tcsstr(GetCommandLine(), TEXT("BXFI_MAP="));
     TCHAR *name = env + sizeof ("BXFI_MAP=") - 1;
 
     HANDLE shm = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, name);
+
     if (!shm)
         return -ENOENT;
 
@@ -113,6 +114,7 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 {
     HANDLE sync = map->ctx->sync;
     int rc = bxfi_unmap_local_ctx(map);
+
     SetEvent(sync);
     return rc;
 }
@@ -123,9 +125,9 @@ struct callback_ctx {
     struct bxfi_sandbox *instance;
 };
 
-# ifndef STATUS_BAD_STACK
-#  define STATUS_BAD_STACK 0xC0000028L
-# endif
+#ifndef STATUS_BAD_STACK
+# define STATUS_BAD_STACK 0xC0000028L
+#endif
 
 /*
  *  NTSTATUS specification, from ntstatus.h:
@@ -162,6 +164,7 @@ struct callback_ctx {
 static void get_status(HANDLE handle, struct bxf_instance *instance)
 {
     DWORD exit_code;
+
     GetExitCodeProcess(handle, &exit_code);
     unsigned int sig = 0;
     switch (exit_code) {
@@ -173,11 +176,13 @@ static void get_status(HANDLE handle, struct bxf_instance *instance)
         case STATUS_FLOAT_STACK_CHECK:
         case STATUS_FLOAT_UNDERFLOW:
         case STATUS_INTEGER_DIVIDE_BY_ZERO:
-        case STATUS_INTEGER_OVERFLOW:           sig = SIGFPE; break;
+        case STATUS_INTEGER_OVERFLOW:           sig = SIGFPE;
+            break;
 
         case STATUS_ILLEGAL_INSTRUCTION:
         case STATUS_PRIVILEGED_INSTRUCTION:
-        case STATUS_NONCONTINUABLE_EXCEPTION:   sig = SIGILL; break;
+        case STATUS_NONCONTINUABLE_EXCEPTION:   sig = SIGILL;
+            break;
 
         case STATUS_ACCESS_VIOLATION:
         case STATUS_DATATYPE_MISALIGNMENT:
@@ -187,17 +192,19 @@ static void get_status(HANDLE handle, struct bxf_instance *instance)
         case STATUS_NO_MEMORY:
         case STATUS_INVALID_DISPOSITION:
         case STATUS_BAD_STACK:
-        case STATUS_STACK_OVERFLOW:             sig = SIGSEGV; break;
+        case STATUS_STACK_OVERFLOW:             sig = SIGSEGV;
+            break;
 
-        case STATUS_CONTROL_C_EXIT:             sig = SIGINT; break;
+        case STATUS_CONTROL_C_EXIT:             sig = SIGINT;
+            break;
 
         default: break;
     }
     if (!sig && exit_code & 0xC0000000)
         sig = SIGABRT;
     instance->status.signal = sig;
-    instance->status.exit = exit_code;
-    instance->status.alive = 0;
+    instance->status.exit   = exit_code;
+    instance->status.alive  = 0;
 }
 
 static void CALLBACK handle_child_terminated(PVOID lpParameter,
@@ -206,7 +213,7 @@ static void CALLBACK handle_child_terminated(PVOID lpParameter,
     (void) TimerOrWaitFired;
 
     uint64_t mts_end = bxfi_timestamp_monotonic();
-    uint64_t ts_end = bxfi_timestamp();
+    uint64_t ts_end  = bxfi_timestamp();
 
     struct callback_ctx *ctx = lpParameter;
     struct bxfi_sandbox *instance = ctx->instance;
@@ -252,16 +259,17 @@ static void prepare_ctx_term(struct bxfi_prepare_ctx *ctx)
 static int do_inherit_handle(bxf_fhandle handle, void *user)
 {
     struct bxfi_prepare_ctx *ctx = user;
+
     if (!ctx->handles) {
-        ctx->handles = malloc(32 * sizeof (HANDLE));
+        ctx->handles   = malloc(32 * sizeof (HANDLE));
         ctx->inherited = malloc(32);
-        ctx->capacity = 32;
+        ctx->capacity  = 32;
     }
 
     /* Reserve a slot for the sync event handle */
     if (ctx->size + 2 >= ctx->capacity) {
         ctx->capacity *= 1.61;
-        ctx->handles = realloc(ctx->handles, ctx->capacity);
+        ctx->handles   = realloc(ctx->handles, ctx->capacity);
         ctx->inherited = realloc(ctx->inherited, ctx->capacity);
     }
 
@@ -299,15 +307,16 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     /* Process params and allocate relevant ressources */
 
     struct bxfi_addr addr;
+
     if (bxfi_normalize_fnaddr(fn, &addr) < 0)
         return -EINVAL;
 
-    errnum = -ENOMEM;
+    errnum   = -ENOMEM;
     instance = malloc(sizeof (*instance));
     if (!instance)
         goto error;
-    instance->mantled = mantled;
-    instance->user = user;
+    instance->mantled   = mantled;
+    instance->user      = user;
     instance->user_dtor = user_dtor;
 
     instance->waited = CreateEvent(NULL, FALSE, FALSE, NULL);
@@ -320,7 +329,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     ZeroMemory(&info, sizeof (info));
 
     SECURITY_ATTRIBUTES inherit_handle = {
-        .nLength = sizeof (SECURITY_ATTRIBUTES),
+        .nLength        = sizeof (SECURITY_ATTRIBUTES),
         .bInheritHandle = TRUE
     };
 
@@ -340,7 +349,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     if (!prep.handles) {
         prep.handles = &sync;
-        prep.size = 1;
+        prep.size    = 1;
     } else {
         prep.handles[prep.size++] = sync;
     }
@@ -360,7 +369,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         ok = UpdateProcThreadAttribute(attr, 0,
                 PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep.handles,
-                prep.size * sizeof(HANDLE), NULL, NULL);
+                prep.size * sizeof (HANDLE), NULL, NULL);
         if (!ok)
             goto error;
     }
@@ -368,7 +377,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     TCHAR filename[MAX_PATH];
     GetModuleFileName(NULL, filename, MAX_PATH);
 
-    uint64_t ts_start = bxfi_timestamp();
+    uint64_t ts_start  = bxfi_timestamp();
     uint64_t mts_start = bxfi_timestamp_monotonic();
 
     LONG bid = InterlockedIncrement(&boxid);
@@ -420,8 +429,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 goto error;
         }
 
-        DWORD pathsz = GetEnvironmentVariable(TEXT("PATH"), NULL, 0);
-        TCHAR *path = malloc(pathsz * sizeof (TCHAR));
+        DWORD pathsz    = GetEnvironmentVariable(TEXT("PATH"), NULL, 0);
+        TCHAR *path     = malloc(pathsz * sizeof (TCHAR));
         TCHAR *dbg_full = NULL;
 
         pathsz = SearchPath(path, dbg, TEXT(".exe"), 0, NULL, NULL);
@@ -429,7 +438,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             goto file_not_found;
 
         dbg_full = malloc(pathsz * sizeof (TCHAR));
-        pathsz = SearchPath(path, dbg, TEXT(".exe"), pathsz, dbg_full, NULL);
+        pathsz   = SearchPath(path, dbg, TEXT(".exe"), pathsz, dbg_full, NULL);
 
         if (!pathsz) {
 file_not_found:
@@ -449,8 +458,8 @@ file_not_found:
         free(path);
         free(cmdline);
     } else {
-        TCHAR *fmt = TEXT("boxfort-worker %s");
-        SIZE_T size = _sctprintf(fmt, filename, env_map);
+        TCHAR *fmt     = TEXT("boxfort-worker %s");
+        SIZE_T size    = _sctprintf(fmt, filename, env_map);
         TCHAR *cmdline = malloc(sizeof (TCHAR) * size);
         _sntprintf(cmdline, size, fmt, env_map);
 
@@ -472,7 +481,7 @@ file_not_found:
         .sandbox = sandbox,
         .pid = info.dwProcessId,
         .status.alive = 1,
-        .time.start = ts_start,
+        .time.start   = ts_start,
         .user = instance->user,
     };
 
@@ -482,9 +491,11 @@ file_not_found:
         if (bxfi_push_timeout(instance, sandbox->quotas.runtime) < 0)
             goto error;
 
+
     if (sandbox->iquotas.runtime > 0)
         if (bxfi_push_timeout(instance, sandbox->iquotas.runtime) < 0)
             goto error;
+
 
     if (preexec && preexec(&instance->props) < 0)
         goto error;
@@ -500,7 +511,7 @@ file_not_found:
         goto error;
 
     map.ctx->sync = sync;
-    map.ctx->fn = addr.addr;
+    map.ctx->fn   = addr.addr;
     if (ictx)
         map.ctx->context.handle = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);
@@ -555,6 +566,7 @@ error:
 int bxf_term(bxf_instance *instance)
 {
     struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+
     if (sb->user && sb->user_dtor)
         sb->user_dtor(instance, sb->user);
     if (sb->mantled)
@@ -568,6 +580,7 @@ int bxf_term(bxf_instance *instance)
 int bxf_wait(bxf_instance *instance, double timeout)
 {
     DWORD dwtimeout;
+
     if (timeout == BXF_FOREVER || !isfinite(timeout))
         dwtimeout = INFINITE;
     else
