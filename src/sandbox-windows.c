@@ -392,13 +392,14 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (sandbox->debug.debugger) {
         TCHAR *dbg = NULL;
         TCHAR *cmdline = NULL;
+        SIZE_T size;
 
         switch (sandbox->debug.debugger) {
             case BXF_DBG_WINDBG: {
                 dbg = TEXT("windbg");
                 TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                size = _sctprintf(fmt, sandbox->debug.tcp, filename,
                         env_map);
                 cmdline = malloc(sizeof (TCHAR) * (size + 1));
                 _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
@@ -408,7 +409,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 dbg = TEXT("gdbserver");
                 TCHAR *fmt = TEXT("boxfort-worker tcp:%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                size = _sctprintf(fmt, sandbox->debug.tcp, filename,
                         env_map);
                 cmdline = malloc(sizeof (TCHAR) * size);
                 _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
@@ -418,7 +419,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 dbg = TEXT("lldb-server");
                 TCHAR *fmt = TEXT("boxfort-worker gdbserver *:%d %s %s");
 
-                SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
+                size = _sctprintf(fmt, sandbox->debug.tcp, filename,
                         env_map);
                 cmdline = malloc(sizeof (TCHAR) * size);
                 _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
@@ -428,6 +429,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 errnum = -EINVAL;
                 goto error;
         }
+
+        /* _sntprinf does not null-terminate its output */
+        cmdline[size] = '\0';
 
         DWORD pathsz    = GetEnvironmentVariable(TEXT("PATH"), NULL, 0);
         TCHAR *path     = malloc(pathsz * sizeof (TCHAR));
