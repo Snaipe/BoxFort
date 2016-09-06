@@ -395,12 +395,12 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         switch (sandbox->debug.debugger) {
             case BXF_DBG_WINDBG: {
-                dbg = TEXT("gdbserver");
+                dbg = TEXT("windbg");
                 TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s %s");
 
                 SIZE_T size = _sctprintf(fmt, sandbox->debug.tcp, filename,
                         env_map);
-                cmdline = malloc(sizeof (TCHAR) * size);
+                cmdline = malloc(sizeof (TCHAR) * (size + 1));
                 _sntprintf(cmdline, size, fmt, sandbox->debug.tcp, filename,
                         env_map);
             } break;
@@ -433,6 +433,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         TCHAR *path     = malloc(pathsz * sizeof (TCHAR));
         TCHAR *dbg_full = NULL;
 
+        GetEnvironmentVariable(TEXT("PATH"), path, pathsz);
+
         pathsz = SearchPath(path, dbg, TEXT(".exe"), 0, NULL, NULL);
         if (!pathsz)
             goto file_not_found;
@@ -442,7 +444,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         if (!pathsz) {
 file_not_found:
-            fprintf(stderr, "Could not start debugger: File not found.\n");
+            fprintf(stderr, "Could not start %s: File not found.\n", dbg);
             free(dbg_full);
             free(path);
             free(cmdline);
