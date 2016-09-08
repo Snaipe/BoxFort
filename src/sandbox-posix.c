@@ -719,7 +719,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     }
 
 #if defined (HAVE_PR_SET_PDEATHSIG)
-    prctl(PR_SET_PDEATHSIG, SIGKILL);
+    int pdeathsig = sandbox->debug.debugger ? SIGTERM : SIGKILL;
+    prctl(PR_SET_PDEATHSIG, pdeathsig);
 #endif
 
     pid = getpid();
