@@ -38,6 +38,9 @@
 #include <sys/signal.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#endif
 
 #if defined (HAVE_CLOCK_GETTIME)
 # include <time.h>
