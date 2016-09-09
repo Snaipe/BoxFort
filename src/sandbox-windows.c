@@ -290,6 +290,41 @@ static int do_inherit_handle(bxf_fhandle handle, void *user)
     return 0;
 }
 
+static int prepare_context(bxf_context ictx, bxf_sandbox sandbox) {
+    if (ictx) {
+        if (bxfi_context_prepare(ictx, do_inherit_handle, &prep) < 0)
+            return 0;
+    }
+
+    if (!prep.handles) {
+        prep.handles = &sync;
+        prep.size    = 1;
+    } else {
+        prep.handles[prep.size++] = sync;
+    }
+
+    if (!sandbox->inherit.files) {
+        SIZE_T attrsz = 0;
+        InitializeProcThreadAttributeList(NULL, 1, 0, &attrsz);
+
+        LPPROC_THREAD_ATTRIBUTE_LIST attr = malloc(attrsz);
+        if (!attr)
+            return 0;
+        BOOL ok = InitializeProcThreadAttributeList(attr, 1, 0, &attrsz);
+        if (!ok)
+            return 0;
+
+        si.lpAttributeList = attr;
+
+        ok = UpdateProcThreadAttribute(attr, 0,
+                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep.handles,
+                prep.size * sizeof (HANDLE), NULL, NULL);
+        if (!ok)
+            return 0;
+    }
+    return 1;
+}
+
 int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
         void *user, bxf_dtor user_dtor)
@@ -342,37 +377,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     bxf_context ictx = sandbox->inherit.context;
 
-    if (ictx) {
-        if (bxfi_context_prepare(ictx, do_inherit_handle, &prep) < 0)
-            goto error;
-    }
-
-    if (!prep.handles) {
-        prep.handles = &sync;
-        prep.size    = 1;
-    } else {
-        prep.handles[prep.size++] = sync;
-    }
-
-    if (!sandbox->inherit.files) {
-        SIZE_T attrsz = 0;
-        InitializeProcThreadAttributeList(NULL, 1, 0, &attrsz);
-
-        LPPROC_THREAD_ATTRIBUTE_LIST attr = malloc(attrsz);
-        if (!attr)
-            goto error;
-        BOOL ok = InitializeProcThreadAttributeList(attr, 1, 0, &attrsz);
-        if (!ok)
-            goto error;
-
-        si.lpAttributeList = attr;
-
-        ok = UpdateProcThreadAttribute(attr, 0,
-                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep.handles,
-                prep.size * sizeof (HANDLE), NULL, NULL);
-        if (!ok)
-            goto error;
-    }
+    if (!prepare_context(ictx, sandbox))
+        goto error;
 
     TCHAR filename[MAX_PATH];
     GetModuleFileName(NULL, filename, MAX_PATH);
@@ -448,7 +454,6 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         if (!pathsz) {
 file_not_found:
-            fprintf(stderr, "Could not start %s: File not found.\n", dbg);
             free(dbg_full);
             free(path);
             free(cmdline);
