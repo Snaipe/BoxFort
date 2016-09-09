@@ -309,7 +309,6 @@ static int get_exe_path(char *buf, size_t sz)
     char path[PATH_MAX];
     if (fd == -1 && errno == ENOENT) {
         int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
-        char path[PATH_MAX];
         size_t cb = sizeof (path);
         sysctl(mib, sizeof (mib) / sizeof (int), path, &cb, NULL, 0);
         self = path;
