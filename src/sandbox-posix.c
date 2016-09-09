@@ -615,6 +615,20 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (bxfi_normalize_fnaddr(fn, &addr) < 0)
         return -EINVAL;
 
+    char dbg_full[PATH_MAX];
+    if (sandbox->debug.debugger) {
+        const char *dbg = NULL;
+        switch (sandbox->debug.debugger) {
+            case BXF_DBG_GDB:   dbg = "gdbserver"; break;
+            case BXF_DBG_LLDB:  dbg = "lldb-server"; break;
+            default:
+                return -EINVAL;
+        }
+
+        if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0)
+            return -ENOENT;
+    }
+
     errnum = -ENOMEM;
 
     instance = malloc(sizeof (*instance));
@@ -749,47 +763,33 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     char **env = dupenv((char *[]) { env_map, NULL });
 
+    char *fullpath = exe;
+    char *argv[16] = { "boxfort-worker" };
+    size_t argc = 1;
+
     if (sandbox->debug.debugger) {
-        const char *dbg = NULL;
-        char *argv[16];
         char port[11];
 
         switch (sandbox->debug.debugger) {
             case BXF_DBG_GDB:
-                dbg = "gdbserver";
-                argv[0] = "boxfort-worker";
-                argv[1] = port;
-                argv[2] = exe;
-                argv[3] = NULL;
-
                 snprintf(port, sizeof (port), "tcp:%d", sandbox->debug.tcp);
                 break;
             case BXF_DBG_LLDB:
-                dbg = "lldb-server";
-                argv[0] = "boxfort-worker";
-                argv[1] = "gdbserver";
-                argv[2] = port;
-                argv[3] = exe;
-                argv[4] = NULL;
-
+                argv[argc++] = "gdbserver";
                 snprintf(port, sizeof (port), "*:%d", sandbox->debug.tcp);
                 break;
             default:
-                fprintf(stderr,
-                    "Could not start debugger: Unknown debugger.\n");
                 abort();
         }
 
-        char dbg_full[PATH_MAX];
-        if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0) {
-            fprintf(stderr, "Could not start debugger: File not found.\n");
-            abort();
-        }
+        argv[argc++] = port;
+        argv[argc++] = exe;
 
-        execve(dbg_full, argv, env);
-    } else {
-        execle(exe, "boxfort-worker", NULL, env);
+        fullpath = dbg_full;
     }
+    argv[argc++] = NULL;
+
+    execve(fullpath, argv, env);
     _exit(errno);
 
 err:
