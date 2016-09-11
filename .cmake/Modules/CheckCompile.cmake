@@ -13,7 +13,7 @@ function (check_type_exists _T _H _VAR)
 endfunction ()
 
 function (check_asm_source_compiles _S _VAR)
-  if (NOT CMAKE_ASM-ATT_COMPILER_WORKS)
+  if (NOT CMAKE_ASM_COMPILER_WORKS)
     set (${_VAR} FALSE)
     return ()
   endif ()
