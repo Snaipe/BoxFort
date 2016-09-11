@@ -161,6 +161,7 @@ add_subdirectory (src)
 
 if (BXF_STATIC_LIB)
   add_library (boxfort STATIC ${SOURCE_FILES})
+  add_definitions (-DBXF_STATIC_LIB)
 else ()
   add_library (boxfort SHARED ${SOURCE_FILES})
 endif ()
