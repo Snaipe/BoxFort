@@ -290,17 +290,20 @@ static int do_inherit_handle(bxf_fhandle handle, void *user)
     return 0;
 }
 
-static int prepare_context(bxf_context ictx, bxf_sandbox sandbox) {
+static int prepare_context(bxf_context ictx, bxf_sandbox *sandbox,
+        HANDLE sync, STARTUPINFOEX *si,
+        struct bxfi_prepare_ctx *prep)
+{
     if (ictx) {
-        if (bxfi_context_prepare(ictx, do_inherit_handle, &prep) < 0)
+        if (bxfi_context_prepare(ictx, do_inherit_handle, prep) < 0)
             return 0;
     }
 
-    if (!prep.handles) {
-        prep.handles = &sync;
-        prep.size    = 1;
+    if (!prep->handles) {
+        prep->handles = &sync;
+        prep->size    = 1;
     } else {
-        prep.handles[prep.size++] = sync;
+        prep->handles[prep->size++] = sync;
     }
 
     if (!sandbox->inherit.files) {
@@ -314,11 +317,11 @@ static int prepare_context(bxf_context ictx, bxf_sandbox sandbox) {
         if (!ok)
             return 0;
 
-        si.lpAttributeList = attr;
+        si->lpAttributeList = attr;
 
         ok = UpdateProcThreadAttribute(attr, 0,
-                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep.handles,
-                prep.size * sizeof (HANDLE), NULL, NULL);
+                PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep->handles,
+                prep->size * sizeof (HANDLE), NULL, NULL);
         if (!ok)
             return 0;
     }
@@ -377,7 +380,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     bxf_context ictx = sandbox->inherit.context;
 
-    if (!prepare_context(ictx, sandbox))
+    if (!prepare_context(ictx, sandbox, sync, &si, &prep))
         goto error;
 
     TCHAR filename[MAX_PATH];
