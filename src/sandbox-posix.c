@@ -285,6 +285,8 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     /* This is either our PID or the debugging server's PID */
     pid_t control_pid = map->ctx->pid;
 
+    int suspend = map->ctx->suspend;
+
     map->ctx->ok  = 1;
     map->ctx->pid = getpid();
     bxfi_unmap_local_ctx(map);
@@ -296,6 +298,9 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 
     /* Notify the parent to finalize initialization */
     kill(control_pid, SIGSTOP);
+
+    if (suspend)
+        raise(SIGSTOP);
     return 0;
 }
 
@@ -680,9 +685,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         if (map_rc < 0)
             goto err;
 
-        local_ctx.ctx->ok  = 0;
-        local_ctx.ctx->fn  = addr.addr;
-        local_ctx.ctx->pid = pid;
+        local_ctx.ctx->ok       = 0;
+        local_ctx.ctx->fn       = addr.addr;
+        local_ctx.ctx->pid      = pid;
+        local_ctx.ctx->suspend  = sandbox->suspended;
         bxf_context ictx = sandbox->inherit.context;
         if (ictx) {
 #ifdef BXF_ARENA_REOPEN_SHM
@@ -730,6 +736,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         bxfi_unmap_local_ctx(&local_ctx);
 
         kill(pid, SIGCONT);
+
+        if (sandbox->suspended)
+            instance->props.status.stopped = 1;
 
         *out = &instance->props;
         return 0;
@@ -915,4 +924,14 @@ int bxf_wait(bxf_instance *instance, double timeout)
         shm_unlink(map_name);
     }
     return 0;
+}
+
+void bxf_suspend(bxf_instance *instance)
+{
+    kill((pid_t) instance->pid, SIGSTOP);
+}
+
+void bxf_resume(bxf_instance *instance)
+{
+    kill((pid_t) instance->pid, SIGCONT);
 }

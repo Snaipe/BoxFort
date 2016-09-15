@@ -215,6 +215,7 @@ struct bxf_debug {
 };
 
 #define BXFI_SANDBOX_FIELDS         \
+    int suspended;                  \
     struct bxf_quotas quotas;       \
     struct bxf_quotas iquotas;      \
     struct bxf_inheritance inherit; \
@@ -297,5 +298,8 @@ BXF_API int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
     (bxf_run_struct( \
     &(struct bxf_spawn_params) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
 BXF_API int bxf_run_struct(bxf_spawn_params params);
+
+BXF_API void bxf_suspend(bxf_instance *instance);
+BXF_API void bxf_resume(bxf_instance *instance);
 
 #endif /* !BOXFORT_H_ */

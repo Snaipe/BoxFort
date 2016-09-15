@@ -116,6 +116,10 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
     int rc = bxfi_unmap_local_ctx(map);
 
     SetEvent(sync);
+
+    HANDLE self = DuplicateHandle(GetCurrentThread());
+    SuspendThread(self);
+    CloseHandle(self);
     return rc;
 }
 
@@ -541,7 +545,7 @@ file_not_found:
     if (wres == WAIT_OBJECT_0)
         goto error;
 
-    CloseHandle(info.hThread);
+    instance->mainthread = info.hThread;
     CloseHandle(sync);
 
     struct callback_ctx *wctx = malloc(sizeof (*wctx));
@@ -559,6 +563,10 @@ file_not_found:
             WT_EXECUTELONGFUNCTION | WT_EXECUTEONLYONCE);
 
     bxfi_unmap_local_ctx(&map);
+
+    if (sandbox->suspended)
+        instance->props.status.stopped = 1;
+
     *out = &instance->props;
     return 0;
 
@@ -586,6 +594,7 @@ int bxf_term(bxf_instance *instance)
     if (sb->mantled)
         free((void *) instance->sandbox);
     CloseHandle(sb->proc);
+    CloseHandle(sb->mainthread);
     CloseHandle(sb->waited);
     free(sb);
     return 0;
@@ -604,4 +613,16 @@ int bxf_wait(bxf_instance *instance, double timeout)
     if (WaitForSingleObject(sb->waited, dwtimeout) != WAIT_OBJECT_0)
         return -ECHILD;
     return 0;
+}
+
+void bxf_suspend(bxf_instance *instance)
+{
+    struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    SuspendThread(sb->mainthread);
+}
+
+void bxf_resume(bxf_instance *instance)
+{
+    struct bxfi_sandbox *sb = bxfi_cont(instance, struct bxfi_sandbox, props);
+    ResumeThread(sb->mainthread);
 }

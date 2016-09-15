@@ -44,6 +44,7 @@ struct bxfi_map {
 struct bxfi_sandbox {
     struct bxf_instance props;
     HANDLE proc;
+    HANDLE mainthread;
 
     /* A sandbox is said to be mantled if there is an unique instance
        managing its memory. */
