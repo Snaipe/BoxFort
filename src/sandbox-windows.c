@@ -577,7 +577,7 @@ error:
         DeleteProcThreadAttributeList(si.lpAttributeList);
     if (sync)
         CloseHandle(sync);
-    if (!success) {
+    if (success) {
         CloseHandle(info.hThread);
         TerminateProcess(info.hProcess, 3);
         CloseHandle(info.hProcess);
