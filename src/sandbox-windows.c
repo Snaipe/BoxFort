@@ -117,7 +117,14 @@ int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 
     SetEvent(sync);
 
-    HANDLE self = DuplicateHandle(GetCurrentThread());
+    HANDLE self;
+    DuplicateHandle(GetCurrentProcess(),
+            GetCurrentThread(),
+            GetCurrentProcess(),
+            &self,
+            0,
+            FALSE,
+            DUPLICATE_SAME_ACCESS);
     SuspendThread(self);
     CloseHandle(self);
     return rc;
