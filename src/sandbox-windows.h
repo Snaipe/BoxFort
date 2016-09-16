@@ -33,6 +33,7 @@ struct bxfi_context {
     struct bxfi_ctx_arena context;
     size_t fn_soname_sz;
     HANDLE sync;
+    int suspend;
 };
 
 struct bxfi_map {

@@ -113,20 +113,23 @@ int bxfi_unmap_local_ctx(struct bxfi_map *map)
 int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 {
     HANDLE sync = map->ctx->sync;
+    int suspend = map->ctx->suspend;
     int rc = bxfi_unmap_local_ctx(map);
 
     SetEvent(sync);
 
-    HANDLE self;
-    DuplicateHandle(GetCurrentProcess(),
-            GetCurrentThread(),
-            GetCurrentProcess(),
-            &self,
-            0,
-            FALSE,
-            DUPLICATE_SAME_ACCESS);
-    SuspendThread(self);
-    CloseHandle(self);
+    if (suspend) {
+        HANDLE self;
+        DuplicateHandle(GetCurrentProcess(),
+                GetCurrentThread(),
+                GetCurrentProcess(),
+                &self,
+                0,
+                FALSE,
+                DUPLICATE_SAME_ACCESS);
+        SuspendThread(self);
+        CloseHandle(self);
+    }
     return rc;
 }
 
@@ -311,8 +314,9 @@ static int prepare_context(bxf_context ictx, bxf_sandbox *sandbox,
     }
 
     if (!prep->handles) {
-        prep->handles = &sync;
-        prep->size    = 1;
+        prep->handles   = malloc(sizeof (HANDLE));
+        *prep->handles  = sync;
+        prep->size      = 1;
     } else {
         prep->handles[prep->size++] = sync;
     }
@@ -535,8 +539,9 @@ file_not_found:
     if ((errnum = bxfi_create_local_ctx(&map, map_name, len + 1)) < 0)
         goto error;
 
-    map.ctx->sync = sync;
-    map.ctx->fn   = addr.addr;
+    map.ctx->sync    = sync;
+    map.ctx->suspend = sandbox->suspended;
+    map.ctx->fn      = addr.addr;
     if (ictx)
         map.ctx->context.handle = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);
