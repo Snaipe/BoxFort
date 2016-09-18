@@ -21,6 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifdef _WIN32
+# define _CRT_RAND_S
+#endif
+
 #include <errno.h>
 #include <limits.h>
 #include <stdio.h>
@@ -30,37 +34,34 @@
 #include "arena.h"
 #include "boxfort.h"
 #include "common.h"
+#include "timestamp.h"
 
 #ifndef _WIN32
 # include <fcntl.h>
 # include <sys/mman.h>
 # include <sys/stat.h>
 # include <unistd.h>
-
-# include "timestamp.h"
 #endif
 
 #define PAGE_SIZE 4096
 #define GROWTH_RATIO (1.61)
 #define MAP_RETRIES 3
 
-#ifndef _WIN32
-# if BXF_BITS == 32
-#  define SPTR 4
+#if BXF_BITS == 32
+# define SPTR 4
 static void *mmap_max = (void *) 0xf0000000;
-# elif BXF_BITS == 64
-#  define SPTR 6
+#elif BXF_BITS == 64
+# define SPTR 6
 
 /* On Linux it seems that you cannot map > 48-bit addresses */
 static void *mmap_max = (void *) 0x7f0000000000;
-# else
-#  error Platform not supported
-# endif
+#else
+# error Platform not supported
+#endif
 
 static unsigned int mmap_seed;
 static void *mmap_base   = (void *) ((uintptr_t) 1 << (SPTR * 8 - 3));
 static intptr_t mmap_off = ((intptr_t) 1 << ((SPTR / 2) * 8));
-#endif
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -98,12 +99,47 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     if (!hndl)
         return -EINVAL;
 
-    struct bxf_arena *a = MapViewOfFile(hndl, FILE_MAP_WRITE, 0, 0, initial);
+    if (!mmap_seed)
+        mmap_seed = bxfi_timestamp_monotonic();
 
-    if (!a)
-        goto error;
+    intptr_t r;
+    struct bxf_arena *a;
+    int tries = 0;
 
-    if (!VirtualAlloc(a, initial, MEM_COMMIT, PAGE_READWRITE))
+    for (tries = 0; tries < MAP_RETRIES;) {
+        rand_s(&mmap_seed);
+        r = mmap_seed;
+
+        void *base = ptr_add(mmap_base, r * mmap_off);
+        if (base > mmap_max || base < mmap_base)
+            continue;
+
+        for (void *addr = base; addr < ptr_add(base, initial);
+                addr = ptr_add(addr, PAGE_SIZE))
+        {
+            MEMORY_BASIC_INFORMATION mbi;
+            memset(&mbi, 0, sizeof (mbi));
+
+            if (VirtualQuery(addr, &mbi, sizeof (mbi)))
+                if (mbi.State != MEM_FREE)
+                    goto retry;
+        }
+
+        a = MapViewOfFileEx(hndl, FILE_MAP_WRITE, 0, 0, initial, base);
+
+        if (!a)
+            goto error;
+
+        if (!VirtualAlloc(a, initial, MEM_COMMIT, PAGE_READWRITE))
+            goto error;
+
+        if ((void *) a < mmap_max && (void *) a > mmap_base)
+            break;
+        UnmapViewOfFile(a);
+        ++tries;
+retry:  ;
+    }
+    if (tries == MAP_RETRIES)
         goto error;
 
 #else
