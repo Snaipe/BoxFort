@@ -2,21 +2,11 @@ language: c
 
 sudo: false
 
-addons:
-  apt:
-    sources:
-    - deadsnakes
-    packages:
-    - python3.5
-
 _packages:
   - &i386-packages
     apt:
-      sources:
-      - deadsnakes
       packages:
       - gcc-multilib
-      - python3.5
 
 _environments:
   - &i386-env
@@ -59,17 +49,11 @@ before_install:
   - if [ -n "${SUDO_PKG}" ]; then sudo apt-get install -qq ${SUDO_PKG}; fi
   - |
       if [ "${TESTS:-ON}" = "ON" ]; then
+        export PYTHON_BIN="python"
         if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          travis_retry brew install python3
-          export PATH="$(python3 -m site --user-base)/bin:$PATH"
-          export PYTHON_BIN="python3"
-          travis_retry pip3 install cram==0.7
-        else
-          travis_retry curl -LO https://bootstrap.pypa.io/get-pip.py
-          python3.5 get-pip.py --user
-          export PYTHON_BIN="python3.5"
-          travis_retry pip3 install --user cram==0.7
+          export PATH="$(python -m site --user-base)/bin:$PATH"
         fi
+        travis_retry pip install --user cram==0.7
       fi
 
 script:
