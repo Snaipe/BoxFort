@@ -204,8 +204,14 @@ static void *get_main_addr(bxfi_exe_ctx ctx)
        the PLT address if we have a dynamic symbol */
     ElfSym *sym = dynsym_lookup(lm, "main");
 
-    if (sym)
-        return (void *) (sym->st_value + lm->l_addr);
+    uintptr_t base = lm->l_addr;
+
+    if (sym) {
+        if (sym->st_value >= base)
+            return (void *) sym->st_value;
+        else
+            return (void *) (sym->st_value + base);
+    }
 
     /* Otherwise, we fallback to whatever the linker says */
     return nonstd (void *) &main;
