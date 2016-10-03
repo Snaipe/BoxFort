@@ -7,12 +7,23 @@ _packages:
     apt:
       packages:
       - gcc-multilib
+  - &arm-packages
+    apt:
+      packages:
+      - qemu-user
+      - gcc-arm-linux-gnueabihf
+      - libc6-dev-armhf-cross
 
 _environments:
   - &i386-env
     - TOOLCHAIN=gcc-i686
   - &i386-darwin-env
     - TOOLCHAIN=gcc-darwin-i686
+  - &arm-env
+    - ARCH=arm
+    - TARGET=linux-gnueabihf
+    - TOOLCHAIN=gcc-generic
+    - CMAKE_OPTS=-DUSE_QEMU=ON
 
 matrix:
   include:
@@ -28,6 +39,13 @@ matrix:
       compiler: gcc
     - env: [CONFIGURATION=RelWithDebInfo, *i386-env]
       addons: *i386-packages
+      compiler: gcc
+    # ARM
+    - env: [CONFIGURATION=Debug, *arm-env]
+      addons: *arm-packages
+      compiler: gcc
+    - env: [CONFIGURATION=RelWithDebInfo, *arm-env]
+      addons: *arm-packages
       compiler: gcc
   # OS X
     # x86_64

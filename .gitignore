@@ -3,6 +3,8 @@
 
 !src/*.c
 !src/*.h
+!src/asm/*.S
+!src/asm/*.asm
 !sample/*.c
 !test/*.t
 !.cmake/*/*.cmake
