@@ -589,9 +589,29 @@ static char **dupenv(char **concat)
     for (char **e = concat; *e; ++e, ++clen) ;
 
     char **dupe = malloc(sizeof (void *) * (len + clen + 1));
-    memcpy(dupe, concat, clen * sizeof (void *));
-    memcpy(dupe + clen, environ, len * sizeof (void *));
-    dupe[len + clen] = NULL;
+    memcpy(dupe, environ, (len + 1) * sizeof (void *));
+
+    char **d = dupe + len;
+    for (char **e = concat; *e; ++e) {
+        char **de = dupe;
+        for (; *de; ++de) {
+            char *eq1 = strchr(*e, '='), *eq2 = strchr(*de, '=');
+            if (!eq1 || !eq2)
+                continue;
+
+            size_t l1 = (size_t)(eq1 - *e), l2 = (size_t)(eq2 - *de);
+            if (l1 != l2)
+                continue;
+
+            if (!strncmp(*e, *de, l1)) {
+                *de = *e;
+                break;
+            }
+        }
+        if (!*de)
+            *d++ = *e;
+    }
+    *d = NULL;
 
     return dupe;
 }
