@@ -795,7 +795,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     char env_map[sizeof ("BXFI_MAP=") + sizeof (map_name)];
     snprintf(env_map, sizeof (env_map), "BXFI_MAP=%s", map_name);
 
-    char **env = dupenv((char *[]) { env_map, NULL });
+    char **env = dupenv((char *[]) { env_map, "GMON_OUT_PREFIX=sandbox-gmon", NULL });
 
     char *fullpath = exe;
     char *argv[16] = { "boxfort-worker" };
