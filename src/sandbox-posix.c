@@ -608,10 +608,11 @@ static char **dupenv(char **concat)
                 break;
             }
         }
-        if (!*de)
+        if (!*de) {
             *d++ = *e;
+            *d = NULL;
+        }
     }
-    *d = NULL;
 
     return dupe;
 }
