@@ -1,9 +1,9 @@
 # BoxFort
 
-[![Unix Build Status](https://api.travis-ci.org/Snaipe/BoxFort.svg?branch=master)](https://travis-ci.org/Snaipe/BoxFort) 
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/Snaipe/BoxFort?svg=true&branch=master)](https://ci.appveyor.com/project/Snaipe/BoxFort/branch/master)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/Snaipe/BoxFort/blob/master/LICENSE) 
-[![Version](https://img.shields.io/badge/version-experimental-orange.svg?style=flat)](https://github.com/Snaipe/BoxFort/releases) 
+[![Unix Build Status](https://api.travis-ci.org/diacritic/BoxFort.svg?branch=master)](https://travis-ci.org/diacritic/BoxFort) 
+[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/diacritic/BoxFort?svg=true&branch=master)](https://ci.appveyor.com/project/diacritic/BoxFort/branch/master)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/diacritic/BoxFort/blob/master/LICENSE) 
+[![Version](https://img.shields.io/badge/version-experimental-orange.svg?style=flat)](https://github.com/diacritic/BoxFort/releases) 
 
 A simple, cross-platform sandboxing C library powering [Criterion][criterion].
 
