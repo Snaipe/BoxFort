@@ -103,11 +103,11 @@ intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
     bxfi_exe_lib nb_images = _dyld_image_count();
-    size_t segidx = 0;
 
     for (bxfi_exe_lib i = 0; i < nb_images; ++i) {
         const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(i);
         intptr_t slide = bxfi_exe_get_vmslide(i);
+        size_t segidx = 0;
 
         const struct load_command *lc = ptr_add(hdr, sizeof (mach_hdr));
         for (size_t c = 0; c < hdr->ncmds; ++c, lc = ptr_add(lc, lc->cmdsize)) {
