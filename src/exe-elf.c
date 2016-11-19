@@ -276,7 +276,7 @@ static int find_lib_from_addr(struct dl_phdr_info *info,
         if (phdr->p_type != PT_LOAD)
             continue;
 
-        void *base = (void *) phdr->p_vaddr;
+        void *base = (void *) info->dlpi_addr + phdr->p_vaddr;
         void *end = (char *) base + phdr->p_memsz;
 
         if (ctx->addr >= base && ctx->addr < end) {
@@ -317,6 +317,9 @@ static int find_lib_from_name(struct dl_phdr_info *info,
     struct find_lib_from_name_ctx *ctx = data;
     size_t segidx = 0;
 
+    if (strcmp(info->dlpi_name, ctx->name))
+        return 0;
+
     for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
         const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
 
@@ -324,7 +327,7 @@ static int find_lib_from_name(struct dl_phdr_info *info,
             continue;
 
         if (segidx == ctx->segidx) {
-            ctx->base = (void *) phdr->p_vaddr;
+            ctx->base = (void *) info->dlpi_addr + phdr->p_vaddr;
             return 1;
         }
         ++segidx;

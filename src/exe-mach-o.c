@@ -144,7 +144,8 @@ intptr_t bxfi_slide_from_name(const char *name, size_t seg)
                 break;
             }
         }
-        return -EINVAL;
+        if (!lib)
+            return -EINVAL;
     }
 
     const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(lib);
