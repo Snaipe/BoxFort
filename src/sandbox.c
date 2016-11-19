@@ -41,6 +41,7 @@ static int bxfi_main(void)
     struct bxfi_addr addr = {
         .soname = (char *) (local_ctx.ctx + 1),
         .addr   = local_ctx.ctx->fn,
+        .seg    = local_ctx.ctx->seg,
     };
     bxf_fn *fn = bxfi_denormalize_fnaddr(&addr);
 

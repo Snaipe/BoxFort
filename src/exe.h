@@ -37,8 +37,8 @@
 #endif
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
-bxfi_exe_lib bxfi_lib_from_addr(const void *addr);
-bxfi_exe_lib bxfi_lib_from_name(const char *name);
+intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg);
+intptr_t bxfi_slide_from_name(const char *name, size_t seg);
 const char *bxfi_lib_name(bxfi_exe_lib lib);
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib);
 

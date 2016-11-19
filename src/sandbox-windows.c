@@ -542,6 +542,7 @@ file_not_found:
     map.ctx->sync    = sync;
     map.ctx->suspend = sandbox->suspended;
     map.ctx->fn      = addr.addr;
+    map.ctx->seg     = addr.seg;
     if (ictx)
         map.ctx->context.handle = bxfi_context_gethandle(ictx);
     memcpy(map.ctx + 1, addr.soname, len + 1);

@@ -30,6 +30,7 @@
 struct bxfi_addr {
     const char *soname;
     const void *addr;
+    size_t seg;
 };
 
 int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to);

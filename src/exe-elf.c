@@ -21,6 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -254,29 +255,93 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
+struct find_lib_from_addr_ctx {
+    const void *addr;
+    const char *name;
+    size_t segidx;
+    void *base;
+};
+
+static int find_lib_from_addr(struct dl_phdr_info *info,
+        size_t size, void *data)
 {
-    bxfi_exe_ctx ctx = init_exe_ctx();
+    (void) size;
 
-    struct link_map *lo = ctx->r_map;
+    struct find_lib_from_addr_ctx *ctx = data;
+    size_t segidx = 0;
 
-    for (struct link_map *lm = lo; lm; lm = lm->l_next) {
-        if (addr >= (void *) lm->l_addr && lo->l_addr < lm->l_addr)
-            lo = lm;
+    for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
+        const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
+
+        if (phdr->p_type != PT_LOAD)
+            continue;
+
+        void *base = (void *) phdr->p_vaddr;
+        void *end = (char *) base + phdr->p_memsz;
+
+        if (ctx->addr >= base && ctx->addr < end) {
+            ctx->name = info->dlpi_name;
+            ctx->segidx = segidx;
+            ctx->base = base;
+            return 1;
+        }
+        ++segidx;
     }
-    return lo;
+    return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_name(const char *name)
+intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
-    bxfi_exe_ctx ctx = init_exe_ctx();
+    struct find_lib_from_addr_ctx ctx = {
+        .addr = addr,
+    };
+    if (!dl_iterate_phdr(find_lib_from_addr, &ctx))
+        return -EINVAL;
 
-    for (struct link_map *lm = ctx->r_map; lm; lm = lm->l_next) {
-        const char *lname = bxfi_lib_name(lm);
-        if (!strcmp(lname, name))
-            return lm;
+    *name = ctx.name;
+    *seg = ctx.segidx;
+    return (intptr_t) ctx.base;
+}
+
+struct find_lib_from_name_ctx {
+    const char *name;
+    size_t segidx;
+    void *base;
+};
+
+static int find_lib_from_name(struct dl_phdr_info *info,
+        size_t size, void *data)
+{
+    (void) size;
+
+    struct find_lib_from_name_ctx *ctx = data;
+    size_t segidx = 0;
+
+    for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
+        const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
+
+        if (phdr->p_type != PT_LOAD)
+            continue;
+
+        if (segidx == ctx->segidx) {
+            ctx->base = (void *) phdr->p_vaddr;
+            return 1;
+        }
+        ++segidx;
     }
-    return BXFI_INVALID_LIB;
+    return 0;
+}
+
+intptr_t bxfi_slide_from_name(const char *name, size_t seg)
+{
+    struct find_lib_from_name_ctx ctx = {
+        .name = name,
+        .segidx = seg,
+    };
+    if (!dl_iterate_phdr(find_lib_from_name, &ctx))
+        return -EINVAL;
+
+    return (intptr_t) ctx.base;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

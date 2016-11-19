@@ -98,20 +98,27 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
+intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     MEMORY_BASIC_INFORMATION mbi;
 
-    if (VirtualQuery(addr, &mbi, sizeof (mbi)))
-        return (HMODULE) mbi.AllocationBase;
-    return BXFI_INVALID_LIB;
+    if (VirtualQuery(addr, &mbi, sizeof (mbi))) {
+        HMODULE hmod = mbi.AllocationBase;
+        *name = bxfi_lib_name(hmod);
+        *seg = 0;
+        return (intptr_t) hmod;
+    }
+    return -EINVAL;
 }
 
-bxfi_exe_lib bxfi_lib_from_name(const char *name)
+intptr_t bxfi_slide_from_name(const char *name, size_t seg)
 {
+    (void) seg;
+
     if (!strcmp(name, "self"))
         name = NULL;
-    return GetModuleHandle(name);
+    HMODULE hmod = GetModuleHandle(name);
+    return (intptr_t) hmod;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

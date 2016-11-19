@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <dlfcn.h>
+#include <errno.h>
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
@@ -97,11 +98,12 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
+intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
     bxfi_exe_lib nb_images = _dyld_image_count();
+    size_t segidx = 0;
 
     for (bxfi_exe_lib i = 0; i < nb_images; ++i) {
         const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(i);
@@ -114,28 +116,53 @@ bxfi_exe_lib bxfi_lib_from_addr(const void *addr)
                 uintptr_t start = sc->vmaddr + slide;
                 uintptr_t end   = start + sc->vmsize - 1;
 
-                if ((uintptr_t) addr >= start && (uintptr_t) addr <= end)
-                    return i;
+                if ((uintptr_t) addr >= start && (uintptr_t) addr <= end) {
+                    *name = bxfi_lib_name(i);
+                    *seg  = segidx;
+                    return start;
+                }
+
+                ++segidx;
             }
         }
     }
-    return BXFI_INVALID_LIB;
+    return -EINVAL;
 }
 
-bxfi_exe_lib bxfi_lib_from_name(const char *name)
+intptr_t bxfi_slide_from_name(const char *name, size_t seg)
 {
-    if (!strcmp("self", name))
-        return 0;
+    bxfi_exe_lib lib = 0;
 
-    /* TODO: this is not thread safe, as another thread can load or unload
-     * images on the fly -- find a way to fix this. */
-    bxfi_exe_lib nb_images = _dyld_image_count();
-    for (bxfi_exe_lib i = 1; i < nb_images; ++i) {
-        const char *img_name = _dyld_get_image_name(i);
-        if (img_name && !strcmp(img_name, name))
-            return i;
+    if (strcmp("self", name)) {
+        /* TODO: this is not thread safe, as another thread can load or unload
+         * images on the fly -- find a way to fix this. */
+        bxfi_exe_lib nb_images = _dyld_image_count();
+        for (bxfi_exe_lib i = 1; i < nb_images; ++i) {
+            const char *img_name = _dyld_get_image_name(i);
+            if (img_name && !strcmp(img_name, name)) {
+                lib = i;
+                break;
+            }
+        }
+        return -EINVAL;
     }
-    return BXFI_INVALID_LIB;
+
+    const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(lib);
+    intptr_t slide = bxfi_exe_get_vmslide(lib);
+    size_t segidx = 0;
+
+    const struct load_command *lc = ptr_add(hdr, sizeof (mach_hdr));
+    for (size_t c = 0; c < hdr->ncmds; ++c, lc = ptr_add(lc, lc->cmdsize)) {
+        if (lc->cmd != BXF_LC_SEGMENT)
+            continue;
+
+        const segment_cmd *sc = (void *) lc;
+
+        if (segidx == seg)
+            return sc->vmaddr + slide;
+        ++segidx;
+    }
+    return -EINVAL;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

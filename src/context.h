@@ -41,6 +41,7 @@ enum bxfi_ctx_tag {
 struct bxfi_ctx_static {
     enum bxfi_ctx_tag tag;
     const void *addr;
+    size_t seg;
     size_t size;
     char data[];
 };

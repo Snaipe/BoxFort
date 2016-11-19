@@ -708,6 +708,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         local_ctx.ctx->ok       = 0;
         local_ctx.ctx->fn       = addr.addr;
+        local_ctx.ctx->seg      = addr.seg;
         local_ctx.ctx->pid      = pid;
         local_ctx.ctx->suspend  = sandbox->suspended;
         bxf_context ictx = sandbox->inherit.context;

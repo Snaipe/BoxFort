@@ -30,6 +30,7 @@
 struct bxfi_context {
     size_t total_sz;
     const void *fn;
+    size_t seg;
     struct bxfi_ctx_arena context;
     size_t fn_soname_sz;
     HANDLE sync;

@@ -73,6 +73,7 @@ int bxf_context_addstatic(bxf_context ctx, const void *ptr, size_t size)
 
     elt->tag  = BXFI_TAG_STATIC;
     elt->addr = addr.addr;
+    elt->seg  = addr.seg;
     elt->size = size;
     strcpy(&elt->data[size], addr.soname);
 
@@ -167,7 +168,7 @@ int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr)
     struct bxfi_ctx_object *elt;
 
     size_t sonamelen = strlen(norm.soname) + 1;
-    size_t size = sizeof (void *) + sonamelen;
+    size_t size = sizeof (void *) + sizeof (norm.seg) + sonamelen;
     size_t len  = strlen(name) + 1;
 
     bxf_ptr p = bxf_arena_alloc(&ctx->arena, sizeof (*elt) + len + size);
@@ -178,9 +179,15 @@ int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr)
 
     elt->tag    = BXFI_TAG_OBJECT;
     elt->namesz = len;
-    memcpy(&elt->data, name, len);
-    memcpy(&elt->data[elt->namesz], &norm.addr, sizeof (void *));
-    memcpy(&elt->data[elt->namesz + sizeof (void *)], norm.soname, sonamelen);
+
+    size_t i = 0;
+    memcpy(&elt->data[i], name, len);
+    i += elt->namesz;
+    memcpy(&elt->data[i], &norm.addr, sizeof (void *));
+    i += sizeof (void *);
+    memcpy(&elt->data[i], &norm.seg, sizeof (norm.seg));
+    i += sizeof (norm.seg);
+    memcpy(&elt->data[i], norm.soname, sonamelen);
     return 0;
 }
 
@@ -188,6 +195,7 @@ int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr)
 {
     struct {
         void *addr;
+        size_t seg;
         const char soname[];
     } *serialized;
 
@@ -196,6 +204,7 @@ int bxf_context_getaddr(bxf_context ctx, const char *name, void **addr)
         struct bxfi_addr norm = {
             .addr   = serialized->addr,
             .soname = serialized->soname,
+            .seg    = serialized->seg,
         };
         *addr = bxfi_denormalize_addr(&norm);
     }
@@ -290,7 +299,8 @@ static int prepare_elt(void *ptr, size_t size, void *user)
 
             struct bxfi_addr a = {
                 .addr   = elt->addr,
-                .soname = &elt->data[elt->size]
+                .soname = &elt->data[elt->size],
+                .seg    = elt->seg,
             };
             void *addr = bxfi_denormalize_addr(&a);
             if (!addr)
@@ -341,7 +351,8 @@ static int inherit_elt(void *ptr, size_t size, void *user)
 
             struct bxfi_addr a = {
                 .addr   = elt->addr,
-                .soname = &elt->data[elt->size]
+                .soname = &elt->data[elt->size],
+                .seg    = elt->seg,
             };
             void *addr = bxfi_denormalize_addr(&a);
             if (!addr)
