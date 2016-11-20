@@ -276,7 +276,7 @@ static int find_lib_from_addr(struct dl_phdr_info *info,
         if (phdr->p_type != PT_LOAD)
             continue;
 
-        void *base = (void *) info->dlpi_addr + phdr->p_vaddr;
+        void *base = (void *) (info->dlpi_addr + phdr->p_vaddr);
         void *end = (char *) base + phdr->p_memsz;
 
         if (ctx->addr >= base && ctx->addr < end) {
@@ -327,7 +327,7 @@ static int find_lib_from_name(struct dl_phdr_info *info,
             continue;
 
         if (segidx == ctx->segidx) {
-            ctx->base = (void *) info->dlpi_addr + phdr->p_vaddr;
+            ctx->base = (void *) (info->dlpi_addr + phdr->p_vaddr);
             return 1;
         }
         ++segidx;
