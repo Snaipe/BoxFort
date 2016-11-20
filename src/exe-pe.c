@@ -24,6 +24,7 @@
 #include "exe.h"
 #include "common.h"
 
+#include <errno.h>
 #include <tlhelp32.h>
 
 #ifdef _MSC_VER
