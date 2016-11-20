@@ -48,20 +48,21 @@
 #define MAP_RETRIES 3
 
 #if BXF_BITS == 32
-# define SPTR 4
-static void *mmap_max = (void *) 0xf0000000;
+static void *mmap_base = (void *) 0x40000000;
+static void *mmap_max  = (void *) 0xa0000000;
+static intptr_t mmap_off = (intptr_t) 1 << 16;
+static intptr_t mmap_off_mask = 0x3fff;
 #elif BXF_BITS == 64
-# define SPTR 6
-
 /* On Linux it seems that you cannot map > 48-bit addresses */
-static void *mmap_max = (void *) 0x7f0000000000;
+static void *mmap_base = (void *) 0x200000000000;
+static void *mmap_max  = (void *) 0x7f0000000000;
+static intptr_t mmap_off = (intptr_t) 1 << 24;
+static intptr_t mmap_off_mask = 0x3fffff;
 #else
 # error Platform not supported
 #endif
 
 static unsigned int mmap_seed;
-static void *mmap_base   = (void *) ((uintptr_t) 1 << (SPTR * 8 - 3));
-static intptr_t mmap_off = ((intptr_t) 1 << ((SPTR / 2) * 8));
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -109,6 +110,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
     for (tries = 0; tries < MAP_RETRIES;) {
         rand_s(&mmap_seed);
         r = mmap_seed;
+
+        r &= mmap_off_mask;
 
         void *base = ptr_add(mmap_base, r * mmap_off);
         if (base > mmap_max || base < mmap_base)
@@ -195,7 +198,7 @@ retry:  ;
     int tries = 0;
 
     for (tries = 0; tries < MAP_RETRIES;) {
-        r = rand_r(&mmap_seed);
+        r = rand_r(&mmap_seed) & mmap_off_mask;
 
         void *base = ptr_add(mmap_base, r * mmap_off);
         if (base > mmap_max || base < mmap_base)
