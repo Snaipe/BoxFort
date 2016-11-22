@@ -4,6 +4,10 @@
 
 set (ASM_FILES src/asm/trampoline-${BXF_ARCH}${ASM_EXTENSION})
 
+if (MSVC)
+  list(APPEND ASM_FILES src/asm/setjmp-${BXF_ARCH}${ASM_EXTENSION})
+endif ()
+
 set (SOURCE_FILES ${ASM_FILES}
     src/addr.c
     src/addr.h
