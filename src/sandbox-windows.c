@@ -347,8 +347,6 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         int mantled, bxf_fn *fn, bxf_preexec *preexec, bxf_callback *callback,
         void *user, bxf_dtor user_dtor)
 {
-    static LONG boxid = 0;
-
     int errnum = 0;
     struct bxfi_sandbox *instance = NULL;
     BOOL success = FALSE;
@@ -404,10 +402,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     uint64_t ts_start  = bxfi_timestamp();
     uint64_t mts_start = bxfi_timestamp_monotonic();
 
-    LONG bid = InterlockedIncrement(&boxid);
-
     TCHAR map_name[sizeof ("Local\\bxfi_") + 21];
-    _sntprintf(map_name, sizeof (map_name), TEXT("Local\\bxfi_%lu"), bid);
+    _sntprintf(map_name, sizeof (map_name), TEXT("Local\\bxfi_%lu"), (unsigned long)GetCurrentProcessId());
 
     TCHAR env_map[sizeof ("BXFI_MAP=") + sizeof (map_name) + 2];
     memset(env_map, 0, sizeof (env_map));
