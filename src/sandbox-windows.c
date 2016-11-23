@@ -113,22 +113,14 @@ int bxfi_unmap_local_ctx(struct bxfi_map *map)
 int bxfi_term_sandbox_ctx(struct bxfi_map *map)
 {
     HANDLE sync = map->ctx->sync;
-    int suspend = map->ctx->suspend;
+    int waitfordebugger = map->ctx->suspend;
     int rc = bxfi_unmap_local_ctx(map);
 
     SetEvent(sync);
 
-    if (suspend) {
-        HANDLE self;
-        DuplicateHandle(GetCurrentProcess(),
-                GetCurrentThread(),
-                GetCurrentProcess(),
-                &self,
-                0,
-                FALSE,
-                DUPLICATE_SAME_ACCESS);
-        SuspendThread(self);
-        CloseHandle(self);
+    if (waitfordebugger) {
+        while (!IsDebuggerPresent())
+            Sleep(100);
     }
     return rc;
 }
