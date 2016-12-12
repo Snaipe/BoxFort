@@ -290,17 +290,19 @@ static int find_lib_from_addr(struct dl_phdr_info *info,
     return 0;
 }
 
-intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
+uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     struct find_lib_from_addr_ctx ctx = {
         .addr = addr,
     };
-    if (!dl_iterate_phdr(find_lib_from_addr, &ctx))
-        return -EINVAL;
+    if (!dl_iterate_phdr(find_lib_from_addr, &ctx)) {
+        errno = EINVAL;
+        return (uintptr_t) -1;
+    }
 
     *name = ctx.name;
     *seg = ctx.segidx;
-    return (intptr_t) ctx.base;
+    return (uintptr_t) ctx.base;
 }
 
 struct find_lib_from_name_ctx {
@@ -335,16 +337,18 @@ static int find_lib_from_name(struct dl_phdr_info *info,
     return 0;
 }
 
-intptr_t bxfi_slide_from_name(const char *name, size_t seg)
+uintptr_t bxfi_slide_from_name(const char *name, size_t seg)
 {
     struct find_lib_from_name_ctx ctx = {
         .name = name,
         .segidx = seg,
     };
-    if (!dl_iterate_phdr(find_lib_from_name, &ctx))
-        return -EINVAL;
+    if (!dl_iterate_phdr(find_lib_from_name, &ctx)) {
+        errno = EINVAL;
+        return (uintptr_t) -1;
+    }
 
-    return (intptr_t) ctx.base;
+    return (uintptr_t) ctx.base;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

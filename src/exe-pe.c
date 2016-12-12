@@ -99,7 +99,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
+uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     MEMORY_BASIC_INFORMATION mbi;
 
@@ -107,19 +107,24 @@ intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
         HMODULE hmod = mbi.AllocationBase;
         *name = bxfi_lib_name(hmod);
         *seg = 0;
-        return (intptr_t) hmod;
+        return (uintptr_t) hmod;
     }
-    return -EINVAL;
+    errno = EINVAL;
+    return (uintptr_t) -1;
 }
 
-intptr_t bxfi_slide_from_name(const char *name, size_t seg)
+uintptr_t bxfi_slide_from_name(const char *name, size_t seg)
 {
     (void) seg;
 
     if (!strcmp(name, "self"))
         name = NULL;
     HMODULE hmod = GetModuleHandle(name);
-    return (intptr_t) hmod;
+    if (!hmod) {
+        errno = EINVAL;
+        return (uintptr_t) -1;
+    }
+    return (uintptr_t) hmod;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

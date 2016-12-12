@@ -98,7 +98,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     return 0;
 }
 
-intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
+uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     /* TODO: this is not thread safe, as another thread can load or unload
      * images on the fly -- find a way to fix this. */
@@ -126,10 +126,11 @@ intptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
             }
         }
     }
-    return -EINVAL;
+    errno = EINVAL;
+    return (uintptr_t) -1;
 }
 
-intptr_t bxfi_slide_from_name(const char *name, size_t seg)
+uintptr_t bxfi_slide_from_name(const char *name, size_t seg)
 {
     bxfi_exe_lib lib = 0;
 
@@ -144,12 +145,14 @@ intptr_t bxfi_slide_from_name(const char *name, size_t seg)
                 break;
             }
         }
-        if (!lib)
-            return -EINVAL;
+        if (!lib) {
+            errno = EINVAL;
+            return (uintptr_t) -1;
+        }
     }
 
     const mach_hdr *hdr = (const mach_hdr *) _dyld_get_image_header(lib);
-    intptr_t slide = bxfi_exe_get_vmslide(lib);
+    uintptr_t slide = bxfi_exe_get_vmslide(lib);
     size_t segidx = 0;
 
     const struct load_command *lc = ptr_add(hdr, sizeof (mach_hdr));
@@ -163,7 +166,8 @@ intptr_t bxfi_slide_from_name(const char *name, size_t seg)
             return sc->vmaddr + slide;
         ++segidx;
     }
-    return -EINVAL;
+    errno = EINVAL;
+    return (uintptr_t) -1;
 }
 
 const char *bxfi_lib_name(bxfi_exe_lib lib)

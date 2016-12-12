@@ -32,10 +32,10 @@ int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to)
 {
     size_t seg;
     const char *name;
-    intptr_t slide = bxfi_slide_from_addr(addr, &name, &seg);
+    uintptr_t slide = bxfi_slide_from_addr(addr, &name, &seg);
 
-    if (slide < 0)
-        return slide;
+    if (slide == (uintptr_t) -1)
+        return -errno;
 
     to->addr    = (char *) addr - slide;
     to->soname  = name;
@@ -45,9 +45,9 @@ int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to)
 
 void *bxfi_denormalize_addr(struct bxfi_addr *addr)
 {
-    intptr_t slide = bxfi_slide_from_name(addr->soname, addr->seg);
+    uintptr_t slide = bxfi_slide_from_name(addr->soname, addr->seg);
 
-    if (slide < 0)
+    if (slide == (uintptr_t) -1)
         return NULL;
 
     return (char *) addr->addr + slide;
