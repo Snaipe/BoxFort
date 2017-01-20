@@ -372,6 +372,11 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
     return &strtab[soname_off];
 }
 
+void bxfi_lib_name_term(const char *str)
+{
+    (void) str;
+}
+
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
 {
     return lib->l_addr;

@@ -177,6 +177,11 @@ const char *bxfi_lib_name(bxfi_exe_lib lib)
     return _dyld_get_image_name(lib);
 }
 
+void bxfi_lib_name_term(const char *str)
+{
+    (void) str;
+}
+
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
 {
     return _dyld_get_image_vmaddr_slide(lib);

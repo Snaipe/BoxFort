@@ -40,6 +40,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
 uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg);
 uintptr_t bxfi_slide_from_name(const char *name, size_t seg);
 const char *bxfi_lib_name(bxfi_exe_lib lib);
+void bxfi_lib_name_term(const char *str);
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib);
 
 #endif /* !PLT_H_ */

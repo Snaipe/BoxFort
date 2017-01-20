@@ -247,6 +247,7 @@ struct bxfi_prepare_ctx {
     uint8_t *inherited;
     size_t size;
     size_t capacity;
+    LPPROC_THREAD_ATTRIBUTE_LIST attr;
 };
 
 static void prepare_ctx_term(struct bxfi_prepare_ctx *ctx)
@@ -259,6 +260,8 @@ static void prepare_ctx_term(struct bxfi_prepare_ctx *ctx)
     }
     free(ctx->handles);
     free(ctx->inherited);
+    if (ctx->attr)
+        free(ctx->attr);
     ctx->capacity = 0;
 }
 
@@ -329,6 +332,7 @@ static int prepare_context(bxf_context ictx, bxf_sandbox *sandbox,
         ok = UpdateProcThreadAttribute(attr, 0,
                 PROC_THREAD_ATTRIBUTE_HANDLE_LIST, prep->handles,
                 prep->size * sizeof (HANDLE), NULL, NULL);
+        prep->attr = attr;
         if (!ok)
             return 0;
     }
@@ -564,6 +568,7 @@ file_not_found:
             WT_EXECUTELONGFUNCTION | WT_EXECUTEONLYONCE);
 
     bxfi_unmap_local_ctx(&map);
+    bxfi_addr_term(&addr);
 
     if (sandbox->suspended)
         instance->props.status.stopped = 1;
@@ -583,6 +588,7 @@ error:
         TerminateProcess(info.hProcess, 3);
         CloseHandle(info.hProcess);
     }
+    bxfi_addr_term(&addr);
     return errnum;
 }
 

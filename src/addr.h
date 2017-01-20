@@ -35,6 +35,7 @@ struct bxfi_addr {
 
 int bxfi_normalize_addr(const void *addr, struct bxfi_addr *to);
 void *bxfi_denormalize_addr(struct bxfi_addr *addr);
+void bxfi_addr_term(struct bxfi_addr *addr);
 
 static inline int bxfi_normalize_fnaddr(bxf_fn *addr, struct bxfi_addr *to)
 {

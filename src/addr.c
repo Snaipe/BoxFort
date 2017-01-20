@@ -52,3 +52,8 @@ void *bxfi_denormalize_addr(struct bxfi_addr *addr)
 
     return (char *) addr->addr + slide;
 }
+
+void bxfi_addr_term(struct bxfi_addr *addr)
+{
+    bxfi_lib_name_term(addr->soname);
+}
