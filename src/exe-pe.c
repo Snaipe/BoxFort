@@ -54,8 +54,6 @@ extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
-#define PAGE_SIZE 4096
-
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
     void *addr = get_main_addr();

@@ -43,7 +43,6 @@
 # include <unistd.h>
 #endif
 
-#define PAGE_SIZE 4096
 #define GROWTH_RATIO (1.61)
 #define MAP_RETRIES 3
 

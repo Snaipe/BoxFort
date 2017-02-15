@@ -222,7 +222,6 @@ extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
-#define PAGE_SIZE 4096
 #define BXFI_TRAMPOLINE_SIZE          \
     ((uintptr_t) &bxfi_trampoline_end \
     - (uintptr_t) &bxfi_trampoline)

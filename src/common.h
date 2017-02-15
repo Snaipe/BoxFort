@@ -32,10 +32,32 @@
 # define nonstd
 #endif
 
+#ifdef _WIN32
+# include <windows.h>
+#else
+# include <unistd.h>
+#endif
+
 #define align2_down(v, d) ((v) & ~((d) - 1))
 #define align2_up(v, d) ((((v) - 1) & ~((d) - 1)) + (d))
 
 #define bxfi_cont(Var, Type, Member) \
     (Var ? ((Type *) (((char *) Var) - offsetof(Type, Member))) : NULL)
+
+static inline size_t pagesize(void) {
+    static size_t cached;
+    if (!cached) {
+#ifdef _WIN32
+        SYSTEM_INFO si;
+        GetSystemInfo(&si);
+        cached = (size_t) si.dwPageSize;
+#else
+        cached = (size_t) sysconf(_SC_PAGESIZE);
+#endif
+    }
+    return cached;
+}
+
+#define PAGE_SIZE (pagesize())
 
 #endif /* !COMMON_H_ */
