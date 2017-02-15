@@ -44,7 +44,7 @@
 #endif
 
 #define GROWTH_RATIO (1.61)
-#define MAP_RETRIES 3
+#define MAP_RETRIES 10
 
 #if BXF_BITS == 32
 static void *mmap_base = (void *) 0x40000000;
@@ -138,8 +138,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         if ((void *) a < mmap_max && (void *) a > mmap_base)
             break;
         UnmapViewOfFile(a);
-        ++tries;
 retry:  ;
+        ++tries;
     }
     if (tries == MAP_RETRIES)
         goto error;
@@ -220,8 +220,8 @@ retry:  ;
         if ((void *) a < mmap_max && (void *) a > mmap_base)
             break;
         munmap(a, initial);
-        ++tries;
 retry:  ;
+        ++tries;
     }
     if (tries == MAP_RETRIES)
         goto error;
