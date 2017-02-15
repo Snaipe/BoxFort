@@ -74,6 +74,30 @@ static inline void *ptr_add(void *ptr, size_t off)
 
 #define get_free_chunks(arena) (ptr_add(*arena, (*arena)->free_chunks))
 
+static int page_mapped(void *addr) {
+#ifdef _WIN32
+    MEMORY_BASIC_INFORMATION mbi;
+    memset(&mbi, 0, sizeof (mbi));
+
+    if (VirtualQuery(addr, &mbi, sizeof (mbi)))
+        if (mbi.State != MEM_FREE)
+            return 1;
+    return 0;
+#else
+    unsigned char p;
+    errno = EAGAIN;
+    while (errno == EAGAIN) {
+        if (!mincore(addr, pagesize(), &p)) {
+            return 1;
+        }
+
+        if (errno == ENOMEM)
+            return 0;
+    }
+    bug("mincore(2) returned an unexpected error");
+#endif
+}
+
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 {
     initial = align2_up(initial, PAGE_SIZE);
@@ -119,12 +143,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         for (void *addr = base; addr < ptr_add(base, initial);
                 addr = ptr_add(addr, PAGE_SIZE))
         {
-            MEMORY_BASIC_INFORMATION mbi;
-            memset(&mbi, 0, sizeof (mbi));
-
-            if (VirtualQuery(addr, &mbi, sizeof (mbi)))
-                if (mbi.State != MEM_FREE)
-                    goto retry;
+            if (page_mapped(addr))
+                goto retry;
         }
 
         a = MapViewOfFileEx(hndl, FILE_MAP_WRITE, 0, 0, initial, base);
@@ -206,8 +226,7 @@ retry:  ;
         for (void *addr = base; addr < ptr_add(base, initial);
                 addr = ptr_add(addr, PAGE_SIZE))
         {
-            int rc = msync(addr, PAGE_SIZE, 0);
-            if (rc != -1 || errno != ENOMEM)
+            if (page_mapped(addr))
                 goto retry;
         }
 
@@ -410,8 +429,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
     char *addr_hi = ptr_add(*arena, (*arena)->size);
     int move = 0;
     for (char *addr = addr_hi; remsz; remsz -= PAGE_SIZE, addr += PAGE_SIZE) {
-        int rc = msync(addr, PAGE_SIZE, MS_ASYNC);
-        if (rc != -1 || errno != ENOMEM) {
+        if (page_mapped(addr)) {
             move = 1;
             break;
         }

@@ -24,7 +24,10 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#include <errno.h>
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #ifdef __GNUC__
 # define nonstd __extension__
@@ -59,5 +62,14 @@ static inline size_t pagesize(void) {
 }
 
 #define PAGE_SIZE (pagesize())
+
+#define bug(...) do {                               \
+        fprintf(stderr, __VA_ARGS__);               \
+        fprintf(stderr, ": %s\n"                    \
+            "This is a bug; please report it "      \
+            "on the repository's issue tracker.",   \
+            strerror(errno));                       \
+        abort();                                    \
+    } while (0)
 
 #endif /* !COMMON_H_ */
