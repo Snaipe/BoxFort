@@ -91,7 +91,12 @@ static int page_mapped(void *addr) {
             return 1;
         }
 
+#ifdef __APPLE__
+        /* mincore fails with EINVAL for unmapped addresses on OS X */
+        if (errno == EINVAL)
+#else
         if (errno == ENOMEM)
+#endif
             return 0;
     }
     bug("mincore(2) returned an unexpected error");
