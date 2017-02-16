@@ -67,7 +67,7 @@ static inline size_t pagesize(void) {
         fprintf(stderr, __VA_ARGS__);               \
         fprintf(stderr, ": %s\n"                    \
             "This is a bug; please report it "      \
-            "on the repository's issue tracker.",   \
+            "on the repository's issue tracker.\n", \
             strerror(errno));                       \
         abort();                                    \
     } while (0)
