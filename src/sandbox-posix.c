@@ -825,6 +825,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     argv[argc++] = NULL;
 
     execve(fullpath, argv, env);
+    free(env);
+    free(instance);
     _exit(errno);
 
 err:
@@ -837,6 +839,8 @@ err:
         bxfi_unmap_local_ctx(&local_ctx);
         shm_unlink(map_name);
     }
+
+    free(instance);
 
     return errnum;
 }

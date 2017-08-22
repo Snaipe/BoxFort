@@ -85,6 +85,7 @@ static ElfWord lib_dt_lookup_val(bxfi_exe_lib lib, ElfSWord tag)
 static int find_dynamic(struct dl_phdr_info *info, size_t size, void *data)
 {
     ElfAddr *ctx = data;
+    (void)size;
 
     for (ElfOff i = 0; i < info->dlpi_phnum; ++i) {
         if (info->dlpi_phdr[i].p_type == PT_DYNAMIC) {
@@ -205,7 +206,7 @@ static void *get_main_addr(bxfi_exe_ctx ctx)
        the PLT address if we have a dynamic symbol */
     ElfSym *sym = dynsym_lookup(lm, "main");
 
-    uintptr_t base = lm->l_addr;
+    uintptr_t base = (uintptr_t)lm->l_addr;
 
     if (sym) {
         if (sym->st_value >= base)
@@ -378,5 +379,5 @@ void bxfi_lib_name_term(const char *str)
 
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
 {
-    return lib->l_addr;
+    return (uintptr_t)lib->l_addr;
 }
