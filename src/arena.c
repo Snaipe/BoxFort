@@ -38,7 +38,9 @@
 
 #ifndef _WIN32
 # include <fcntl.h>
+#define __BSD_VISIBLE 1
 # include <sys/mman.h>
+#undef __BSD_VISIBLE
 # include <sys/stat.h>
 # include <unistd.h>
 #endif
@@ -84,7 +86,11 @@ static int page_mapped(void *addr) {
             return 1;
     return 0;
 #else
+#if defined(__APPLE__) || defined(__FreeBSD__)
+    char p;
+#else
     unsigned char p;
+#endif
     errno = EAGAIN;
     while (errno == EAGAIN) {
         if (!mincore(addr, pagesize(), &p)) {

@@ -838,6 +838,8 @@ err:
         shm_unlink(map_name);
     }
 
+    free(instance);
+
     return errnum;
 }
 
