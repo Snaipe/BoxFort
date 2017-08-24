@@ -51,6 +51,7 @@ else ()
   endif ()
 
   execute_process (COMMAND ${PYTHON} -m cram -v ${CRAM_OPTS} "${CRAM_PATH}" TIMEOUT 60 RESULT_VARIABLE RES)
+  message(STATUS "${PYTHON} -m cram -v ${CRAM_OPTS} \"${CRAM_PATH}\" TIMEOUT 60 RESULT_VARIABLE RES")
 endif ()
 
 if (NOT RES STREQUAL "0")

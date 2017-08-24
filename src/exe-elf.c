@@ -379,5 +379,5 @@ void bxfi_lib_name_term(const char *str)
 
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib)
 {
-    return (uintptr_t)lib->l_addr;
+    return (size_t)lib->l_addr;
 }
