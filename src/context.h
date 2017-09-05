@@ -27,7 +27,7 @@
 #include "addr.h"
 #include "arena.h"
 
-struct bxf_context {
+struct bxf_context_s {
     bxf_arena arena;
 };
 
