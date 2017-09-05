@@ -52,7 +52,7 @@ struct bxfi_arena_chunk {
 # endif
 #endif
 
-struct bxf_arena {
+struct bxf_arena_s {
     void *addr;
     size_t size;
     intptr_t free_chunks;

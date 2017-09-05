@@ -138,7 +138,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         mmap_seed = bxfi_timestamp_monotonic();
 
     intptr_t r;
-    struct bxf_arena *a;
+    struct bxf_arena_s *a;
     int tries = 0;
 
     for (tries = 0; tries < MAP_RETRIES;) {
@@ -224,7 +224,7 @@ retry:  ;
         mmap_seed = bxfi_timestamp_monotonic();
 
     intptr_t r;
-    struct bxf_arena *a;
+    struct bxf_arena_s *a;
     int tries = 0;
 
     for (tries = 0; tries < MAP_RETRIES;) {
@@ -315,7 +315,7 @@ int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena)
     else
         prot = FILE_MAP_COPY;
 
-    struct bxf_arena *a = MapViewOfFile(hndl, prot, 0, 0, sizeof (*a));
+    struct bxf_arena_s *a = MapViewOfFile(hndl, prot, 0, 0, sizeof (*a));
 
     if (!a)
         return -ENOMEM;
@@ -335,7 +335,7 @@ int bxfi_arena_inherit(bxf_fhandle hndl, int flags, bxf_arena *arena)
     if (!(flags & BXF_ARENA_IMMUTABLE))
         prot |= PROT_WRITE;
 
-    struct bxf_arena *a = mmap(NULL, sizeof (*a), prot, MAP_PRIVATE, hndl, 0);
+    struct bxf_arena_s *a = mmap(NULL, sizeof (*a), prot, MAP_PRIVATE, hndl, 0);
 
     if (a == MAP_FAILED)
         return -errno;
@@ -406,7 +406,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
             return -ENOMEM;
 
         FlushViewOfFile(*arena, size);
-        struct bxf_arena *a = MapViewOfFile((*arena)->handle, FILE_MAP_WRITE,
+        struct bxf_arena_s *a = MapViewOfFile((*arena)->handle, FILE_MAP_WRITE,
                 0, 0, newsize);
 
         if (!a)
@@ -429,7 +429,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
 # if defined (HAVE_MREMAP)
     int flags = (*arena)->flags & BXF_ARENA_MAYMOVE ? MREMAP_MAYMOVE : 0;
 
-    struct bxf_arena *a = mremap(*arena, (*arena)->size, newsize, flags);
+    struct bxf_arena_s *a = mremap(*arena, (*arena)->size, newsize, flags);
     if (a == MAP_FAILED)
         return -errno;
 
@@ -451,7 +451,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
             return -ENOMEM;
 
         msync(*arena, (*arena)->size, MS_SYNC);
-        struct bxf_arena *a = mmap(*arena, newsize, PROT_READ | PROT_WRITE,
+        struct bxf_arena_s *a = mmap(*arena, newsize, PROT_READ | PROT_WRITE,
                 MAP_SHARED, (*arena)->handle, 0);
         if (a == MAP_FAILED)
             return -ENOMEM;
