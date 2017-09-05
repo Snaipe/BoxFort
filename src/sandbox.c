@@ -72,7 +72,7 @@ int bxf_spawn_struct(bxf_instance **out, bxf_spawn_params params)
     if (!params->fn)
         return -EINVAL;
 
-    struct bxf_sandbox *sandbox = calloc(1, sizeof (*sandbox));
+    struct bxf_sandbox_s *sandbox = calloc(1, sizeof (*sandbox));
     if (!sandbox)
         return -ENOMEM;
 
