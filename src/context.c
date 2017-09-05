@@ -41,7 +41,7 @@
 
 int bxf_context_init(bxf_context *ctx)
 {
-    struct bxf_context *nctx = malloc(sizeof (*nctx));
+    struct bxf_context_s *nctx = malloc(sizeof (*nctx));
 
     if (!nctx)
         return -ENOMEM;
@@ -382,7 +382,7 @@ static int inherit_elt(void *ptr, size_t size, void *user)
     return 0;
 }
 
-static struct bxf_context current_ctx;
+static struct bxf_context_s current_ctx;
 
 int bxfi_context_inherit(struct bxfi_ctx_arena *ctx)
 {

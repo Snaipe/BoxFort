@@ -44,7 +44,7 @@ struct bxfi_map {
 };
 
 struct bxfi_sandbox {
-    struct bxf_instance props;
+    struct bxf_instance_s props;
     HANDLE proc;
     HANDLE mainthread;
 

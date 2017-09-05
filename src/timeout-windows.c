@@ -42,7 +42,7 @@ void CALLBACK timeout_killer_fn(void *lpParameter, BOOLEAN TimerOrWaitFired)
     sb->props.status.timed_out = 1;
 }
 
-int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
+int bxfi_push_timeout(struct bxfi_sandbox_s *instance, double timeout)
 {
     HANDLE timer;
     BOOL ok = CreateTimerQueueTimer(&timer, NULL, timeout_killer_fn, instance,
@@ -53,7 +53,7 @@ int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
     return 0;
 }
 
-void bxfi_cancel_timeout(struct bxfi_sandbox *instance)
+void bxfi_cancel_timeout(struct bxfi_sandbox_s *instance)
 {
     (void) instance;
 }

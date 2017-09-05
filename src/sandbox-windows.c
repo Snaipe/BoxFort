@@ -167,7 +167,7 @@ struct callback_ctx {
  *  be directly translated to translate to SIGSYS.
  *
  */
-static void get_status(HANDLE handle, struct bxf_instance *instance)
+static void get_status(HANDLE handle, struct bxf_instance_s *instance)
 {
     DWORD exit_code;
 
@@ -498,7 +498,7 @@ file_not_found:
     if (si.lpAttributeList)
         DeleteProcThreadAttributeList(si.lpAttributeList);
 
-    instance->props = (struct bxf_instance) {
+    instance->props = (struct bxf_instance_s) {
         .sandbox = sandbox,
         .pid = info.dwProcessId,
         .status.alive = 1,

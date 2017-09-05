@@ -683,7 +683,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         instance->start_monotonic = bxfi_timestamp_monotonic();
         instance->wait_pid = pid;
 
-        instance->props = (struct bxf_instance) {
+        instance->props = (struct bxf_instance_s) {
             .sandbox = sandbox,
             .pid = pid,
             .status.alive = 1,
@@ -773,7 +773,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
     pid = getpid();
 
-    instance->props = (struct bxf_instance) {
+    instance->props = (struct bxf_instance_s) {
         .sandbox = sandbox,
         .pid = pid,
     };
