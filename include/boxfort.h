@@ -288,7 +288,7 @@ typedef const struct bxf_start_params_s *bxf_start_params;
     (Sandbox),                            \
     &(struct bxf_start_params_s) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
 BXF_API int bxf_start_struct(bxf_instance **instance,
-        bxf_sandbox *sandbox, struct bxf_start_params_s *params);
+        bxf_sandbox *sandbox, bxf_start_params params);
 
 BXF_API int bxf_term(bxf_instance *instance);
 BXF_API int bxf_wait(bxf_instance *instance, double timeout);
@@ -296,12 +296,12 @@ BXF_API int bxf_wait(bxf_instance *instance, double timeout);
 #define bxf_spawn(Instance, ...)  \
     (bxf_spawn_struct((Instance), \
     &(struct bxf_spawn_params_s) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-BXF_API int bxf_spawn_struct(bxf_instance **instance, struct bxf_spawn_params_s *params);
+BXF_API int bxf_spawn_struct(bxf_instance **instance, bxf_spawn_params params);
 
 #define bxf_run(...) \
     (bxf_run_struct( \
     &(struct bxf_spawn_params_s) { .bxfi_sentinel_ = 0, __VA_ARGS__ }))
-BXF_API int bxf_run_struct(struct bxf_spawn_params_s *params);
+BXF_API int bxf_run_struct(bxf_spawn_params params);
 
 BXF_API void bxf_suspend(bxf_instance *instance);
 BXF_API void bxf_resume(bxf_instance *instance);
