@@ -50,7 +50,7 @@
 
 #if BXF_BITS == 32
 static void *mmap_base = (void *) 0x40000000;
-static void *mmap_max  = (void *) 0xa0000000;
+static void *mmap_max  = (void *) 0x80000000;
 static intptr_t mmap_off = (intptr_t) 1 << 16;
 static intptr_t mmap_off_mask = 0x3fff;
 #elif BXF_BITS == 64
