@@ -49,11 +49,11 @@ before_install:
   - if [ -n "${SUDO_PKG}" ]; then sudo apt-get install -qq ${SUDO_PKG}; fi
   - |
       if [ "${TESTS:-ON}" = "ON" ]; then
-        export PYTHON_BIN="python"
+        export PYTHON_BIN="python2"
         if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          export PATH="$(python -m site --user-base)/bin:$PATH"
+          export PATH="$("$PYTHON_BIN" -m site --user-base)/bin:$PATH"
         fi
-        travis_retry pip install --user cram==0.7
+        travis_retry pip2 install --user cram==0.7
       fi
 
 script:
