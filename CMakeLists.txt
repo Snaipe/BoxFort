@@ -8,6 +8,7 @@ project (BoxFort C)
 
 include (CheckSymbolExists)
 include (CheckLibraryExists)
+include (CheckPrototypeDefinition)
 
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
@@ -146,6 +147,14 @@ check_symbol_exists(CLOCK_MONOTONIC_RAW "time.h" HAVE_CLOCK_MONOTONIC_RAW)
 check_symbol_exists(gettimeofday "sys/time.h" HAVE_GETTIMEOFDAY)
 
 check_symbol_exists(environ "unistd.h" HAVE_ENVIRON)
+
+check_symbol_exists(mincore "sys/mman.h" HAVE_MINCORE)
+
+check_prototype_definition(mincore
+ "int mincore(void *addr, size_t length, unsigned char *vec)"
+ "0"
+ "unistd.h;sys/mman.h"
+ HAVE_UNSIGNED_MINCORE_VEC)
 
 check_library_exists(pthread pthread_cond_timedwait_relative_np
   "pthread.h" HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP)

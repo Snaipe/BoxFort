@@ -85,27 +85,28 @@ static int page_mapped(void *addr) {
         if (mbi.State != MEM_FREE)
             return 1;
     return 0;
-#else
-# if defined(__APPLE__) || defined(__FreeBSD__)
-    char p;
-# else
-    unsigned char p;
+#elif defined (HAVE_MINCORE) && !defined (__APPLE__)
+    /* mincore is somewhat broken on OS X, for some reason. */
+
+# if defined(HAVE_UNSIGNED_MINCORE_VEC)
+    unsigned
 # endif
+    char p;
+
     errno = EAGAIN;
     while (errno == EAGAIN) {
-        if (!mincore(addr, pagesize(), &p)) {
+        if (!mincore(addr, pagesize(), &p))
             return 1;
-        }
-
-# ifdef __APPLE__
-        /* mincore fails with EINVAL for unmapped addresses on OS X */
-        if (errno == EINVAL)
-# else
         if (errno == ENOMEM)
-# endif
             return 0;
     }
     bug("mincore(2) returned an unexpected error");
+#else
+    if (!msync(addr, pagesize(), MS_ASYNC))
+        return 1;
+    if (errno == ENOMEM)
+        return 0;
+    bug("msync(2) returned an unexpected error");
 #endif
 }
 
