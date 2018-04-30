@@ -22,6 +22,7 @@
  * THE SOFTWARE.
  */
 #include <assert.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -479,12 +480,38 @@ static int setup_inheritance(bxf_sandbox *sandbox)
             }
         }
 
-        for (int fd = 0; fd < (int) rl.rlim_cur; ++fd) {
-            if (!do_close[fd])
-                continue;
-            int flags = fcntl(fd, F_GETFD);
-            if (flags > 0 && !(flags & FD_CLOEXEC))
+        /* /dev/fd is somewhat more common than /proc/self/fd; we'll handle
+           special cases later. */
+        int fds = open("/dev/fd", O_RDONLY | O_DIRECTORY);
+
+        if (fds >= 0) {
+            /* this is somewhat problematic, as fdopendir/readdir are not
+               signal-safe, and thus not fork-safe. We can thread the needle
+               here by assuming deadlocks are going to be extremely unlikely,
+               but not using these APIs and rolling with a custom-made readdir
+               might be a better choice for the unforseeable future. */
+            DIR *dirfd = fdopendir(fds);
+
+            /* we have a shortcut; iterate through the directory entries */
+
+            struct dirent *dir;
+            while ((dir = readdir(dirfd)) != NULL) {
+                errno = 0;
+                long fd = strtol(dir->d_name, NULL, 10);
+                if (errno != 0 || fd < 0 || fd > (long) rl.rlim_cur || !do_close[fd])
+                    continue;
                 close(fd);
+            }
+
+            return 0;
+        } else {
+            for (int fd = 0; fd < (int) rl.rlim_cur; ++fd) {
+                if (!do_close[fd])
+                    continue;
+                int flags = fcntl(fd, F_GETFD);
+                if (flags > 0 && !(flags & FD_CLOEXEC))
+                    close(fd);
+            }
         }
         free(do_close);
     }
