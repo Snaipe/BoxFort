@@ -53,3 +53,5 @@ addr_data:
 #endif
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):
+
+#include "stackfix.h"

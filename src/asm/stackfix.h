@@ -21,34 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#include "config.h"
-#include "mangling.h"
 
-#ifdef ASSEMBLER_SUPPORTS_HIDDEN
-.hidden MANGLE(bxfi_trampoline)
+/* This patch is necessary to harden the stack on ELF targets; otherwise,
+   programs compiled with BoxFort will ask for an executable stack, which
+   is not ideal, and even not supported on some platforms. */
+#if defined(__linux__) && defined(__ELF__)
+.section .note.GNU-stack,"",%progbits
 #endif
-.globl MANGLE(bxfi_trampoline)
-MANGLE(bxfi_trampoline):
-    jmp *addr_data(%rip)
-
-#ifdef BXF_EXE_FMT_MACH_O
-.align 3
-#else
-.align 8
-#endif
-
-#ifdef ASSEMBLER_SUPPORTS_HIDDEN
-.hidden MANGLE(bxfi_trampoline_addr)
-#endif
-.globl MANGLE(bxfi_trampoline_addr)
-MANGLE(bxfi_trampoline_addr):
-addr_data:
-.fill 8, 1, 0
-
-#ifdef ASSEMBLER_SUPPORTS_HIDDEN
-.hidden MANGLE(bxfi_trampoline_end)
-#endif
-.globl MANGLE(bxfi_trampoline_end)
-MANGLE(bxfi_trampoline_end):
-
-#include "stackfix.h"
