@@ -41,12 +41,14 @@ matrix:
       addons: *i386-packages
       compiler: gcc
     # ARM
-    - env: [CONFIGURATION=Debug, *arm-env]
-      addons: *arm-packages
-      compiler: gcc
-    - env: [CONFIGURATION=RelWithDebInfo, *arm-env]
-      addons: *arm-packages
-      compiler: gcc
+    # These tests are currently broken; it's probably better to wait until
+    # we get a better CI toolchain for cross-arch testing
+    #- env: [CONFIGURATION=Debug, *arm-env]
+    #  addons: *arm-packages
+    #  compiler: gcc
+    #- env: [CONFIGURATION=RelWithDebInfo, *arm-env]
+    #  addons: *arm-packages
+    #  compiler: gcc
   # OS X
     # x86_64
     - env: CONFIGURATION=Debug
