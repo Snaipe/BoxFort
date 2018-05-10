@@ -104,7 +104,7 @@ set (BXF_EXE_FORMAT elf)
 set (BXF_OS_FAMILY posix)
 
 if (CMAKE_SYSTEM_NAME MATCHES "(Linux|(Free|Net|Open)?BSD|Solaris|SunOS)")
-    add_definitions(-D_XOPEN_SOURCE=600 -D_GNU_SOURCE)
+    add_definitions(-D_DEFAULT_SOURCE -D_GNU_SOURCE)
 elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
     set (BXF_EXE_FORMAT mach-o)
     set (BXF_MANGLING "leading-underscore")
