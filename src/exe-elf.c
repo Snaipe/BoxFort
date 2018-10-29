@@ -193,32 +193,6 @@ static ElfSym *dynsym_lookup(bxfi_exe_lib lib, const char *name)
 
 extern int main(void);
 
-static void *get_main_addr(bxfi_exe_ctx ctx)
-{
-    /* It just so happens that `main` can exist in the symbol hash table of
-       our executable if it is a dynamic symbol, and gives the address of
-       its PLT stub.
-       Effectively, we don't need to traverse the link map list, but
-       this is the exception rather than the norm. */
-    struct link_map *lm = ctx->r_map;
-
-    /* First, do a fast lookup in the dynamic symbol hash table to get
-       the PLT address if we have a dynamic symbol */
-    ElfSym *sym = dynsym_lookup(lm, "main");
-
-    uintptr_t base = (uintptr_t)lm->l_addr;
-
-    if (sym) {
-        if (sym->st_value >= base)
-            return (void *) sym->st_value;
-        else
-            return (void *) (sym->st_value + base);
-    }
-
-    /* Otherwise, we fallback to whatever the linker says */
-    return nonstd (void *) &main;
-}
-
 extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
@@ -229,7 +203,7 @@ extern void *bxfi_trampoline_end;
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
-    void *addr = get_main_addr(init_exe_ctx());
+    void *addr = nonstd (void *) &main;
 
     if (!addr)
         return -1;
