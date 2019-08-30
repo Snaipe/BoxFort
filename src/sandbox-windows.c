@@ -423,7 +423,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
             } break;
             case BXF_DBG_GDB: {
                 dbg = TEXT("gdbserver");
-                TCHAR *fmt = TEXT("boxfort-worker tcp:%d %s %s");
+                TCHAR *fmt = TEXT("boxfort-worker :%d %s %s");
 
                 size = _sctprintf(fmt, sandbox->debug.tcp, filename,
                         env_map);

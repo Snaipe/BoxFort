@@ -834,7 +834,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         switch (sandbox->debug.debugger) {
             case BXF_DBG_GDB:
-                snprintf(port, sizeof (port), "tcp:%d", sandbox->debug.tcp);
+                snprintf(port, sizeof (port), ":%d", sandbox->debug.tcp);
                 break;
             case BXF_DBG_LLDB:
                 argv[argc++] = "gdbserver";
