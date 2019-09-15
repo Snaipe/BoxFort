@@ -1,15 +1,5 @@
-*
-!*/
+build/
 
-!src/*.c
-!src/*.h
-!src/asm/*.S
-!src/asm/*.asm
-!sample/*.c
-!test/*.t
-!.cmake/*/*.cmake
-!CMakeLists.txt
-!*.rst
-!*.md
-
-config.h
+*.swp
+*.swo
+*~
