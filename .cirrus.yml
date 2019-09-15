@@ -1,0 +1,17 @@
+_pipeline: &pipeline
+  build_cache:
+    folder: build
+    populate_script: mkdir build
+  configure_script: meson build
+  compile_script: ninja -C build
+  test_script: ninja -C build test
+
+build_debian_task:
+  <<: *pipeline
+  container:
+    image: snaipe/ci-meson:debian
+
+build_alpine_task:
+  <<: *pipeline
+  container:
+    image: snaipe/ci-meson:alpine
