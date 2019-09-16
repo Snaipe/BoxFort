@@ -6,12 +6,27 @@ _pipeline: &pipeline
   compile_script: ninja -C build
   test_script: ninja -C build test
 
-build_debian_task:
+debian_gcc_task:
   <<: *pipeline
   container:
-    image: snaipe/ci-meson:debian
+    image: snaipe/ci-meson:debian-10
 
-build_alpine_task:
+alpine_x86_64_task:
   <<: *pipeline
   container:
     image: snaipe/ci-meson:alpine
+
+alpine_i386_task:
+  <<: *pipeline
+  container:
+    image: snaipe/ci-meson:alpine-x86
+
+alpine_arm_task:
+  <<: *pipeline
+  container:
+    image: snaipe/ci-meson:alpine-armhf
+
+alpine_aarch64_task:
+  <<: *pipeline
+  container:
+    image: snaipe/ci-meson:alpine-aarch64
