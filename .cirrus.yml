@@ -7,26 +7,30 @@ _pipeline: &pipeline
   test_script: ninja -C build test
 
 debian_gcc_task:
-  <<: *pipeline
   container:
     image: snaipe/ci-meson:debian-10
+  <<: *pipeline
 
 alpine_x86_64_task:
-  <<: *pipeline
   container:
     image: snaipe/ci-meson:alpine
+  <<: *pipeline
 
 alpine_i386_task:
-  <<: *pipeline
   container:
     image: snaipe/ci-meson:alpine-x86
+  <<: *pipeline
 
 alpine_arm_task:
-  <<: *pipeline
   container:
     image: snaipe/ci-meson:alpine-armhf
+  env:
+    CIRRUS_SHELL: /sbin/qemu-sh
+  <<: *pipeline
 
 alpine_aarch64_task:
-  <<: *pipeline
   container:
     image: snaipe/ci-meson:alpine-aarch64
+  env:
+    CIRRUS_SHELL: /sbin/qemu-sh
+  <<: *pipeline
