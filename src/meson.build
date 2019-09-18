@@ -41,7 +41,7 @@ boxfort = library('boxfort', sources,
 	version: '3.1.0',
 	dependencies: deps,
 	install: true,
-	link_args: cc.get_supported_arguments([
+	link_args: cc.get_supported_link_arguments([
 		'-Wl,--exclude-libs,ALL',
 	]),
 )
