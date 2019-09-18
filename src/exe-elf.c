@@ -234,6 +234,7 @@ struct find_lib_from_addr_ctx {
     const char *name;
     size_t segidx;
     void *base;
+    int first;
 };
 
 static int find_lib_from_addr(struct dl_phdr_info *info,
@@ -254,13 +255,18 @@ static int find_lib_from_addr(struct dl_phdr_info *info,
         void *end = (char *) base + phdr->p_memsz;
 
         if (ctx->addr >= base && ctx->addr < end) {
-            ctx->name = info->dlpi_name;
+            if (!ctx->first) {
+                ctx->name = info->dlpi_name;
+            } else {
+                ctx->name = "";
+            }
             ctx->segidx = segidx;
             ctx->base = base;
             return 1;
         }
         ++segidx;
     }
+    ctx->first = 0;
     return 0;
 }
 
@@ -268,6 +274,7 @@ uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
 {
     struct find_lib_from_addr_ctx ctx = {
         .addr = addr,
+        .first = 1,
     };
     if (!dl_iterate_phdr(find_lib_from_addr, &ctx)) {
         errno = EINVAL;
@@ -283,6 +290,7 @@ struct find_lib_from_name_ctx {
     const char *name;
     size_t segidx;
     void *base;
+    int first;
 };
 
 static int find_lib_from_name(struct dl_phdr_info *info,
@@ -293,8 +301,10 @@ static int find_lib_from_name(struct dl_phdr_info *info,
     struct find_lib_from_name_ctx *ctx = data;
     size_t segidx = 0;
 
-    if (strcmp(info->dlpi_name, ctx->name))
+    if (!(ctx->first && !ctx->name[0]) && strcmp(info->dlpi_name, ctx->name))
         return 0;
+
+    ctx->first = 0;
 
     for (ElfW(Half) i = 0; i < info->dlpi_phnum; ++i) {
         const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
@@ -316,6 +326,7 @@ uintptr_t bxfi_slide_from_name(const char *name, size_t seg)
     struct find_lib_from_name_ctx ctx = {
         .name = name,
         .segidx = seg,
+        .first = 1,
     };
     if (!dl_iterate_phdr(find_lib_from_name, &ctx)) {
         errno = EINVAL;
