@@ -98,7 +98,7 @@ elif os == 'darwin'
 endif
 
 config.set('BXF_EXE_FORMAT', binfmt)
-config.set('BXF_EXE_FMT_@0@'.format(binfmt.to_upper()), 1)
+config.set('BXF_EXE_FMT_@0@'.format(binfmt.to_upper().underscorify()), 1)
 config.set('BXF_OS_FAMILY', os_family)
 config.set('BXF_ARCH', '"' + arch + '"')
 config.set('BXF_ARCH_@0@'.format(arch), 1)
