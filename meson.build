@@ -136,7 +136,7 @@ check_prelude = '''
 #define _GNU_SOURCE
 '''
 
-prototype_check = '''
+prototype_check = check_prelude + '''
 @0@
 typedef @1@;
 static _ *check = @2@;
@@ -180,7 +180,11 @@ foreach check : checks
 		result = cc.has_header(name)
 	endif
 
-	name = 'HAVE_@1@@0@'.format(name.to_upper(), chk_prefix.to_upper())
+	if check.has_key('var')
+		name = check.get('var')
+	else
+		name = 'HAVE_@1@@0@'.format(name.to_upper(), chk_prefix.to_upper())
+	endif
 	config.set(name, result)
 endforeach
 

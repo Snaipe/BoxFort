@@ -54,6 +54,8 @@
 #mesondefine HAVE_GETTIMEOFDAY
 #mesondefine HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP
 #mesondefine HAVE_ENVIRON
+#mesondefine HAVE_MINCORE
+#mesondefine HAVE_UNSIGNED_MINCORE_VEC
 #mesondefine ASSEMBLER_SUPPORTS_HIDDEN
 
 # define BXFI_STR_(x) #x
