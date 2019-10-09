@@ -17,8 +17,8 @@ include (CheckCompile)
 
 set (I386 "^(i[3-7]|x)86$")
 set (AMD64 "^(x86_|x86-|AMD|amd|x)64$")
-set (ARM32 "^(arm|ARM|A)(32)?$")
-set (ARM64 "^(arm|ARM|A|aarch|AArch)(64)?$")
+set (ARM32 "^(arm|armv7l|ARM|A)(32)?$")
+set (ARM64 "^(arm|armv7l|ARM|A|aarch|AArch)(64)?$")
 
 if (CMAKE_GENERATOR_PLATFORM)
     set (_ARCH "${CMAKE_GENERATOR_PLATFORM}")
