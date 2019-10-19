@@ -274,13 +274,9 @@ retry:  ;
     a->handle = fd;
 #endif
 
-    struct bxfi_arena_chunk *sentinel = ptr_add(a, a->size - sizeof (*sentinel));
-    *sentinel = (struct bxfi_arena_chunk) { .size = 0 };
-
     struct bxfi_arena_chunk *first = ptr_add(a, a->free_chunks);
     *first = (struct bxfi_arena_chunk) {
-        .size = initial - sizeof (*a) - sizeof (*sentinel),
-        .next = a->size - sizeof (*sentinel),
+        .size = initial - sizeof (*a),
     };
 
     *arena = a;
@@ -397,9 +393,9 @@ static inline int arena_valid(bxf_arena arena)
 
 static int arena_resize(bxf_arena *arena, size_t newsize)
 {
+#ifdef _WIN32
     size_t size = (*arena)->size;
 
-#ifdef _WIN32
     void *base = ptr_add(*arena, (*arena)->size);
     LARGE_INTEGER off = { .QuadPart = (*arena)->size };
 
@@ -426,6 +422,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
 
     if (!VirtualAlloc(addr, newsize - size, MEM_COMMIT, PAGE_READWRITE))
         return -ENOMEM;
+    return 0;
 #else
     if (ftruncate((*arena)->handle, newsize) < 0)
         return -ENOMEM;
@@ -433,15 +430,15 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
 # if defined (HAVE_MREMAP)
     int flags = (*arena)->flags & BXF_ARENA_MAYMOVE ? MREMAP_MAYMOVE : 0;
 
-    struct bxf_arena_s *a = mremap(*arena, size, newsize, flags);
+    struct bxf_arena_s *a = mremap(*arena, (*arena)->size, newsize, flags);
     if (a == MAP_FAILED)
         return -errno;
 
     a->addr = a;
     *arena  = a;
 # else
-    size_t remsz  = newsize - size;
-    char *addr_hi = ptr_add(*arena, size);
+    size_t remsz  = newsize - (*arena)->size;
+    char *addr_hi = ptr_add(*arena, (*arena)->size);
     int move = 0;
     for (char *addr = addr_hi; remsz; remsz -= PAGE_SIZE, addr += PAGE_SIZE) {
         if (page_mapped(addr)) {
@@ -454,33 +451,28 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
         if (!((*arena)->flags & BXF_ARENA_MAYMOVE))
             return -ENOMEM;
 
-        msync(*arena, size, MS_SYNC);
+        msync(*arena, (*arena)->size, MS_SYNC);
         struct bxf_arena_s *a = mmap(*arena, newsize, PROT_READ | PROT_WRITE,
                 MAP_SHARED, (*arena)->handle, 0);
         if (a == MAP_FAILED)
             return -ENOMEM;
 
         a->addr = a;
-        munmap(*arena, size);
+        munmap(*arena, (*arena)->size);
         *arena = a;
     } else {
-        size_t remsz = newsize - size;
+        size_t remsz = newsize - (*arena)->size;
         void *raddr  = mmap(addr_hi, remsz, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_FIXED, (*arena)->handle, size);
+                MAP_SHARED | MAP_FIXED, (*arena)->handle, (*arena)->size);
         if (raddr == MAP_FAILED)
             return -errno;
     }
 # endif
-#endif
-    struct bxfi_arena_chunk *sentinel = ptr_add(*arena, size - sizeof (*sentinel));
-    sentinel->size = newsize - size - sizeof (*sentinel);
-    sentinel->next = newsize - sizeof (*sentinel);
-
-    sentinel = ptr_add(*arena, newsize - sizeof (*sentinel));
-    *sentinel = (struct bxfi_arena_chunk) { .size = 0 };
 
     (*arena)->size = newsize;
     return 0;
+#endif
+    return -ENOMEM;
 }
 
 bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
@@ -710,9 +702,10 @@ int bxf_arena_free(bxf_arena *arena, bxf_ptr p)
 int bxf_arena_iter(bxf_arena arena, bxf_arena_fn *fn, void *user)
 {
     struct bxfi_arena_chunk *c = (void *) (arena + 1);
-    struct bxfi_arena_chunk *end = ptr_add(arena, arena->size - sizeof(*end));
 
-    for (; c != end; c = ptr_add(c, c->size)) {
+    for (; (void *) c < ptr_add(arena, arena->size);
+            c = ptr_add(c, c->size))
+    {
         if (c->addr) {
             int rc = fn(ptr_add(arena, c->addr), c->size - sizeof (*c), user);
             if (rc)
