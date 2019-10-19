@@ -393,9 +393,9 @@ static inline int arena_valid(bxf_arena arena)
 
 static int arena_resize(bxf_arena *arena, size_t newsize)
 {
-#ifdef _WIN32
     size_t size = (*arena)->size;
 
+#ifdef _WIN32
     void *base = ptr_add(*arena, (*arena)->size);
     LARGE_INTEGER off = { .QuadPart = (*arena)->size };
 
@@ -468,6 +468,23 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
             return -errno;
     }
 # endif
+    /* Extend the free chunk at the end of the arena. If it's not free,
+       then initialize a new free chunk. */
+    struct bxfi_arena_chunk *last;
+    for (last = get_free_chunks(arena); last; last = chunk_next(last)) {
+        if (ptr_add(last, last->size) == ptr_add(*arena, size)) {
+            break;
+        }
+    }
+    if (last) {
+        last->size += newsize - size;
+    } else {
+        last->next = (intptr_t) size;
+        last = ptr_add(*arena, size);
+        *last = (struct bxfi_arena_chunk) {
+            .size = newsize - size,
+        };
+    }
 
     (*arena)->size = newsize;
     return 0;
@@ -482,12 +499,15 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
 
     size = align2_up(size + sizeof (struct bxfi_arena_chunk), sizeof (void *));
 
-    intptr_t *nptr = &(*arena)->free_chunks;
-    intptr_t *nptr_best = NULL;
-
     struct bxfi_arena_chunk *best = NULL;
-    struct bxfi_arena_chunk *c;
-    for (c = get_free_chunks(arena); c; c = chunk_next(c)) {
+    intptr_t *nptr_best = NULL;
+    intptr_t *nptr;
+
+find_chunk:
+    nptr = &(*arena)->free_chunks;
+    for (struct bxfi_arena_chunk *c = get_free_chunks(arena);
+            c; c = chunk_next(c))
+    {
         if ((c->size >= size && (!best || best->size > c->size))
                 || (!c->next && !best))
         {
@@ -499,10 +519,16 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
         nptr = &c->next;
     }
 
-    if (best->size < size) {
+    size_t next_off_end = (size_t) ((intptr_t) best + size
+                                  - (intptr_t) *arena + sizeof (*best));
+
+    if (next_off_end > (*arena)->size || best->size < size) {
         if (!((*arena)->flags & BXF_ARENA_RESIZE))
             return -ENOMEM;
 
+        /* size - best->size is the extra space we need, but we need to take
+           the size of the next chunk header into account when calculating the
+           required space. */
         size_t oksize  = (*arena)->size + size - best->size + sizeof (*best);
         size_t newsize = (*arena)->size;
 
@@ -513,6 +539,10 @@ bxf_ptr bxf_arena_alloc(bxf_arena *arena, size_t size)
         int rc = arena_resize(arena, newsize);
         if (rc < 0)
             return rc;
+
+        /* Everything was invalidated, because the arena might have moved.
+           Just give up and retry. */
+        goto find_chunk;
     }
 
     size_t remsz = best->size - size;
