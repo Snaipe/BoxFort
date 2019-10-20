@@ -88,6 +88,13 @@ else
 	error('Architecture "@0@" is not supported.'.format(arch))
 endif
 
+if get_option('arena_reopen_shm')
+	config.set('BXF_ARENA_REOPEN_SHM', 1)
+endif
+if get_option('arena_file_backed')
+	config.set('BXF_ARENA_FILE_BACKED', 1)
+endif
+
 binfmt = 'elf'
 os_family = 'posix'
 if os == 'windows'
@@ -95,6 +102,11 @@ if os == 'windows'
 	os_family = 'windows'
 elif os == 'darwin'
 	binfmt = 'mach-o'
+
+	# This is mandatory because OS X fails silently when mmap'ing an inherited
+	# shm file descriptor
+	config.set('BXF_ARENA_REOPEN_SHM', 1)
+	config.set('BXF_ARENA_FILE_BACKED', 1)
 endif
 
 config.set('BXF_EXE_FORMAT', binfmt)
