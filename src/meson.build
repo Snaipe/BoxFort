@@ -19,12 +19,38 @@ sources = files(
 )
 
 asm_extension = '.S'
-asm = files('asm/trampoline-@0@@1@'.format(arch, asm_extension))
-if target_machine.system() == 'windows'
-	asm += 'asm/setjmp-@0@@1@'.format(arch, asm_extension)
+if cc.get_id() == 'msvc'
+	asm_extension = '.asm'
 endif
 
-sources += asm
+asm = files('asm/trampoline-@0@@1@'.format(arch, asm_extension))
+
+if cc.get_id() == 'msvc'
+	if bitness == 32
+		masm = find_program('ml')
+	else
+		masm = find_program('ml64')
+	endif
+
+	masm_gen = generator(masm,
+		output: '@BASENAME@.obj',
+		depfile: '@BASENAME@.obj.ndep',
+		arguments: [
+			'/I', '@CURRENT_SOURCE_DIR@/asm/',
+			'/I', '@0@/'.format(meson.current_build_dir()),
+			'/safeseh',
+			'@EXTRA_ARGS@',
+			'/Fo', '@OUTPUT@',
+			'/c',
+			'@INPUT@',
+		])
+
+	asm += 'asm/setjmp-@0@@1@'.format(arch, asm_extension)
+
+	sources += masm_gen.process(asm)
+else
+	sources += asm
+endif
 
 configure_file(input         : 'config.h.in',
                output        : 'config.h',
