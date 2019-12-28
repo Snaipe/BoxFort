@@ -3,8 +3,8 @@ cram = find_program('cram', required: false)
 if sh.found() and cram.found()
 	env = environment()
 	env.prepend('PATH',
-			join_paths(meson.build_root(), 'sample'),
-			join_paths(meson.build_root(), 'sample'))
+			join_paths(meson.current_build_dir(), '..', 'sample'),
+			join_paths(meson.current_build_dir(), '..', 'sample'))
 	env.set('LC_ALL', 'en_US.utf8')
 	env.set('MSYS2_ARG_CONV_EXCL', '--filter=')
 	env.set('TERM', 'dumb')
