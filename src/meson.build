@@ -64,7 +64,7 @@ deps = [
 
 boxfort = library('boxfort', sources,
 	include_directories: [boxfort_includedir],
-	version: '3.1.0',
+	version: '0.0.1',
 	dependencies: deps,
 	install: true,
 	link_args: cc.get_supported_link_arguments([
