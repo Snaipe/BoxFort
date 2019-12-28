@@ -72,6 +72,10 @@ boxfort = library('boxfort', sources,
 	]),
 )
 
+boxfort_dep = declare_dependency(
+	include_directories: [boxfort_includedir],
+	link_with: boxfort)
+
 pkgconfig = import('pkgconfig')
 pkgconfig.generate(
 	name: meson.project_name(),
