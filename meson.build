@@ -202,7 +202,9 @@ endforeach
 
 api = files('include/boxfort.h')
 
-install_headers(api)
+if not meson.is_subproject()
+	install_headers(api)
+endif
 
 includedir = include_directories(
 	'include',

@@ -65,7 +65,7 @@ deps = [
 boxfort = static_library('boxfort', sources,
 	include_directories: [boxfort_includedir],
 	dependencies: deps,
-	install: true,
+	install: not meson.is_subproject(),
 	link_args: cc.get_supported_link_arguments([
 		'-Wl,--exclude-libs,ALL',
 	]),
@@ -75,9 +75,11 @@ boxfort_dep = declare_dependency(
 	include_directories: [boxfort_includedir],
 	link_with: boxfort)
 
-pkgconfig = import('pkgconfig')
-pkgconfig.generate(
-	name: meson.project_name(),
-	description: 'A portable process sandboxing library',
-	url: 'https://snai.pe/git/boxfort',
-)
+if not meson.is_subproject()
+	pkgconfig = import('pkgconfig')
+	pkgconfig.generate(
+		name: meson.project_name(),
+		description: 'A portable process sandboxing library',
+		url: 'https://snai.pe/git/boxfort',
+	)
+endif
