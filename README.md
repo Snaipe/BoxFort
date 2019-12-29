@@ -1,7 +1,6 @@
 # BoxFort
 
-[![Unix Build Status](https://api.travis-ci.org/diacritic/BoxFort.svg?branch=master)](https://travis-ci.org/diacritic/BoxFort) 
-[![Windows Build Status](https://ci.appveyor.com/api/projects/status/github/diacritic/BoxFort?svg=true&branch=master)](https://ci.appveyor.com/project/diacritic/BoxFort/branch/master)
+[![Build Status](https://api.cirrus-ci.com/github/Snaipe/BoxFort.svg)](https://cirrus-ci.com/github/Snaipe/BoxFort)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat)](https://github.com/diacritic/BoxFort/blob/master/LICENSE) 
 [![Version](https://img.shields.io/badge/version-experimental-orange.svg?style=flat)](https://github.com/diacritic/BoxFort/releases) 
 
