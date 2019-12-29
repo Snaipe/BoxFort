@@ -1,8 +1,8 @@
 Testing basic samples
 
   $ nested.c.bin
-  I am a nested worker!
   I am a worker!
+  I am a nested worker!
 
 Testing whether the callbacks are working
 

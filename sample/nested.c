@@ -16,12 +16,14 @@
 int second(void)
 {
     printf("I am a nested worker!\n");
+    fflush(stdout);
     return 0;
 }
 
 int first(void)
 {
     printf("I am a worker!\n");
+    fflush(stdout);
 
     _assert(!bxf_run(second));
     return 0;
