@@ -62,7 +62,11 @@ deps = [
 	libm,
 ]
 
-boxfort = static_library('boxfort', sources,
+extra_cflags = cc.get_supported_arguments([
+	'-DBXF_STATIC_LIB=1',
+])
+
+libboxfort = static_library('boxfort', sources,
 	include_directories: [boxfort_includedir],
 	dependencies: deps,
 	install: not meson.is_subproject(),
@@ -71,9 +75,11 @@ boxfort = static_library('boxfort', sources,
 	]),
 )
 
-boxfort_dep = declare_dependency(
+boxfort = declare_dependency(
+	compile_args: extra_cflags,
 	include_directories: [boxfort_includedir],
-	link_with: boxfort)
+	dependencies: [threads, librt, libm],
+	link_with: [libboxfort])
 
 if not meson.is_subproject()
 	pkgconfig = import('pkgconfig')
@@ -81,5 +87,7 @@ if not meson.is_subproject()
 		name: meson.project_name(),
 		description: 'A portable process sandboxing library',
 		url: 'https://snai.pe/git/boxfort',
+		extra_cflags: extra_cflags,
+		libraries: [libboxfort],
 	)
 endif
