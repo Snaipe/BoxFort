@@ -8,7 +8,7 @@ project('boxfort', 'c',
 prefix    = get_option('prefix')
 
 # Helper scripts
-auxdir  = join_paths(meson.source_root(), 'ci')
+auxdir  = join_paths(meson.current_source_dir(), 'ci')
 isdir   = join_paths(auxdir, 'isdir.py')
 
 python3 = find_program('python3')
