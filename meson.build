@@ -6,6 +6,8 @@ project('boxfort', 'c',
 
 # standard install directories
 prefix    = get_option('prefix')
+samples   = get_option('samples')
+tests     = get_option('tests')
 
 # Helper scripts
 auxdir  = join_paths(meson.current_source_dir(), 'ci')
@@ -218,5 +220,11 @@ else
 endif
 
 subdir('src')
-subdir('sample')
-subdir('test')
+
+if samples
+	subdir('sample')
+endif
+
+if tests
+	subdir('test')
+endif

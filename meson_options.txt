@@ -1,2 +1,4 @@
 option('arena_reopen_shm', type: 'boolean', value: false, description: 'Reopen shared memory file in worker process rather than just inherit a file descriptor')
 option('arena_file_backed', type: 'boolean', value: false, description: 'Use a file in tempfs to store the arena rather than using shm facilities')
+option('samples', type: 'boolean', value: true, description: 'Build samples')
+option('tests', type: 'boolean', value: true, description: 'Build and run tests')
