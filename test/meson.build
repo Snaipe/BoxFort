@@ -1,5 +1,5 @@
 sh   = find_program('sh', required: false)
-cram = find_program('cram', required: false)
+cram = find_program('cram', 'cram3', required: false)
 if sh.found() and cram.found()
 	env = environment()
 	env.prepend('PATH',
