@@ -22,13 +22,13 @@
  * THE SOFTWARE.
  */
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
-#include <time.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <signal.h>
 #include <string.h>
+#include <time.h>
 
 #include "config.h"
 #include "sandbox.h"
@@ -48,11 +48,9 @@ static struct {
     int thread_active;
     pthread_mutex_t sync;
     pthread_cond_t cond;
-    pthread_cond_t termcond;
 } self = {
     .sync = PTHREAD_MUTEX_INITIALIZER,
     .cond = PTHREAD_COND_INITIALIZER,
-    .termcond = PTHREAD_COND_INITIALIZER,
 };
 
 static int timespec_cmp(struct timespec *a, struct timespec *b)
@@ -96,8 +94,6 @@ static void to_timespec(double timeout, struct timespec *timeo)
 static void *timeout_killer_fn(void *nil)
 {
     pthread_mutex_lock(&self.sync);
-    while (!self.requests)
-        pthread_cond_wait(&self.cond, &self.sync);
 
     struct bxfi_timeout_request *req;
     for (;;) {
@@ -125,7 +121,7 @@ static void *timeout_killer_fn(void *nil)
         free(req);
     }
 end:
-    pthread_cond_broadcast(&self.termcond);
+    self.thread_active = 0;
     pthread_mutex_unlock(&self.sync);
     return nil;
 }
@@ -137,10 +133,6 @@ void bxfi_reset_timeout_killer(void)
 
     memcpy(&self.sync, &mutex, sizeof (mutex));
     memcpy(&self.cond, &cond, sizeof (cond));
-    memcpy(&self.termcond, &cond, sizeof (cond));
-
-    if (self.requests)
-        pthread_join(self.thread, NULL);
 }
 
 int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
@@ -159,10 +151,16 @@ int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
 
     pthread_mutex_lock(&self.sync);
     if (!self.requests) {
-        if (self.thread_active)
-            pthread_join(self.thread, NULL);
+        pthread_attr_t attrs;
+        if ((rc = pthread_attr_init(&attrs)) == -1) {
+            rc = -errno;
+            goto error;
+        }
+        pthread_attr_setdetachstate(&attrs, PTHREAD_CREATE_DETACHED);
+
         self.thread_active = 1;
-        rc = -pthread_create(&self.thread, NULL, timeout_killer_fn, NULL);
+        rc = -pthread_create(&self.thread, &attrs, timeout_killer_fn, NULL);
+        pthread_attr_destroy(&attrs);
         if (rc)
             goto error;
     }
@@ -177,7 +175,6 @@ int bxfi_push_timeout(struct bxfi_sandbox *instance, double timeout)
     *nptr = req;
 
     pthread_cond_broadcast(&self.cond);
-    pthread_cond_broadcast(&self.termcond);
     pthread_mutex_unlock(&self.sync);
     return 0;
 
@@ -204,17 +201,6 @@ void bxfi_cancel_timeout(struct bxfi_sandbox *instance)
     }
     if (cancelled) {
         pthread_cond_broadcast(&self.cond);
-        if (!self.requests) {
-            while (self.cancelled && !self.requests)
-                pthread_cond_wait(&self.termcond, &self.sync);
-            if (self.requests)
-                goto end;
-            if (self.thread_active) {
-                pthread_join(self.thread, NULL);
-                self.thread_active = 0;
-            }
-        }
     }
-end:
     pthread_mutex_unlock(&self.sync);
 }
