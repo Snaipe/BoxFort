@@ -26,12 +26,20 @@
 #include <mach-o/dyld.h>
 #include <mach-o/loader.h>
 #include <mach-o/nlist.h>
+
+#include "config.h"
+
+#if defined (HAVE_MACH_VM_PROTECT)
+# include <mach/mach.h>
+# include <mach/mach_vm.h>
+# include <mach/vm_prot.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 
-#include "config.h"
 #include "exe.h"
 #include "addr.h"
 #include "common.h"
@@ -70,6 +78,35 @@ extern void *bxfi_trampoline_end;
     ((uintptr_t) &bxfi_trampoline_end \
     - (uintptr_t) &bxfi_trampoline)
 
+static int mem_protect(void *addr, size_t len, int prot)
+{
+    int result = mprotect(addr, len, prot);
+
+#if defined (HAVE_MACH_VM_PROTECT)
+    if (result == 0)
+        return 0;
+
+    vm_prot_t mach_prot = 0;
+    if (prot & PROT_READ)
+        mach_prot |= VM_PROT_READ;
+    if (prot & PROT_WRITE)
+        mach_prot |= VM_PROT_WRITE;
+    if (prot & PROT_EXEC)
+        mach_prot |= VM_PROT_EXECUTE;
+
+    if (mach_vm_protect(mach_task_self(), (mach_vm_address_t) addr, len, FALSE, mach_prot) == 0)
+        return 0;
+
+    /* When a caller finds that he cannot obtain write permission on a mapped entry, the following flag can be used. */
+    if (prot & PROT_WRITE)
+        mach_prot |= VM_PROT_COPY;
+
+    result = mach_vm_protect(mach_task_self(), (mach_vm_address_t) addr, len, FALSE, mach_prot);
+#endif
+
+    return result;
+}
+
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
     void *addr = get_main_addr();
@@ -92,9 +129,9 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
     size_t len = align2_up(offset + sizeof (opcodes), PAGE_SIZE);
 
-    mprotect(base, len, PROT_READ | PROT_WRITE | PROT_EXEC);
+    mem_protect(base, len, PROT_READ | PROT_WRITE | PROT_EXEC);
     memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
-    mprotect(base, len, PROT_READ | PROT_EXEC);
+    mem_protect(base, len, PROT_READ | PROT_EXEC);
     return 0;
 }
 
