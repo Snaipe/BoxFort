@@ -10,6 +10,6 @@ if sh.found() and cram.found()
 	env.set('TERM', 'dumb')
 
 	test('cram tests', cram,
-			args: [join_paths(meson.current_source_dir(), 'cram')],
+			args: ['--shell=' + sh.path(), join_paths(meson.current_source_dir(), 'cram')],
 			env: env)
 endif
