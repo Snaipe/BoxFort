@@ -49,6 +49,7 @@
 #mesondefine HAVE__R_DEBUG
 #mesondefine HAVE__DYNAMIC
 #mesondefine HAVE_PR_SET_PDEATHSIG
+#mesondefine HAVE_PROC_PDEATHSIG_CTL
 #mesondefine HAVE_CLOCK_GETTIME
 #mesondefine HAVE_CLOCK_MONOTONIC_RAW
 #mesondefine HAVE_GETTIMEOFDAY

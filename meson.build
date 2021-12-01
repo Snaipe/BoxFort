@@ -124,6 +124,7 @@ checks = [
 	{'fn': 'gettimeofday'},
 	{'fn': 'mincore'},
 	{'fn': 'prctl'},
+	{'fn': 'procctl'},
 	{'fn': 'shm_open'},
 	{'fn': 'mach_vm_protect'},
 
@@ -136,6 +137,7 @@ checks = [
 	},
 
 	{'sym': 'PR_SET_PDEATHSIG',    'header': 'sys/prctl.h'},
+	{'sym': 'PROC_PDEATHSIG_CTL',  'header': 'sys/procctl.h'},
 	{'sym': 'CLOCK_MONOTONIC_RAW', 'header': 'time.h'},
 	{'sym': 'environ',             'header': 'unistd.h'},
 ]

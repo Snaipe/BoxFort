@@ -61,6 +61,10 @@
 # include <sys/prctl.h>
 #endif
 
+#if defined (HAVE_PROC_PDEATHSIG_CTL)
+# include <sys/procctl.h>
+#endif
+
 #if defined (__APPLE__)
 # include <mach-o/dyld.h>
 #endif
@@ -793,9 +797,13 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         return 0;
     }
 
-#if defined (HAVE_PR_SET_PDEATHSIG)
+#if defined (HAVE_PR_SET_PDEATHSIG) || defined (HAVE_PROC_PDEATHSIG_CTL)
     int pdeathsig = sandbox->debug.debugger ? SIGTERM : SIGKILL;
+#if defined (HAVE_PR_SET_PDEATHSIG)
     prctl(PR_SET_PDEATHSIG, pdeathsig);
+#else
+    procctl(P_PID, 0, PROC_PDEATHSIG_CTL, &pdeathsig);
+#endif
 #endif
 
     pid = getpid();
