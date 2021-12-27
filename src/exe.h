@@ -21,8 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef PLT_H_
-#define PLT_H_
+#ifndef EXE_H_
+#define EXE_H_
 
 #include <stddef.h>
 
@@ -50,4 +50,4 @@ static inline void bxfi_exe_clear_cache(void *addr, size_t len)
 #endif
 }
 
-#endif /* !PLT_H_ */
+#endif /* !EXE_H_ */
