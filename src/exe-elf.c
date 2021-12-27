@@ -146,51 +146,6 @@ static bxfi_exe_ctx init_exe_ctx(void)
     return dbg;
 }
 
-static unsigned long elf_hash(const char *s)
-{
-    unsigned long h = 0, high;
-
-    while (*s) {
-        h = (h << 4) + (unsigned char) *s++;
-        if ((high = h & 0xf0000000))
-            h ^= high >> 24;
-        h &= ~high;
-    }
-    return h;
-}
-
-static ElfSym *elf_hash_find(ElfWWord *hash, ElfSym *symtab,
-        const char *strtab, const char *name)
-{
-    struct {
-        ElfWWord nb_buckets;
-        ElfWWord nb_chains;
-    } *h_info = (void *) hash;
-
-    ElfWWord *buckets = (ElfWWord *) (h_info + 1);
-    ElfWWord *chains  = (ElfWWord *) (h_info + 1) + h_info->nb_buckets;
-
-    unsigned long idx = elf_hash(name) % h_info->nb_buckets;
-
-    for (ElfWWord si = buckets[idx]; si != STN_UNDEF; si = chains[si]) {
-        if (!strcmp(&strtab[symtab[si].st_name], name))
-            return &symtab[si];
-    }
-    return NULL;
-}
-
-static ElfSym *dynsym_lookup(bxfi_exe_lib lib, const char *name)
-{
-    ElfWWord *hash = lib_dt_lookup(lib, DT_HASH);
-    ElfSym *symtab = lib_dt_lookup(lib, DT_SYMTAB);
-    const char *strtab = lib_dt_lookup(lib, DT_STRTAB);
-
-    if (!hash || !symtab || !strtab)
-        return NULL;
-
-    return elf_hash_find(hash, symtab, strtab, name);
-}
-
 extern int main(void);
 
 extern void *bxfi_trampoline;
