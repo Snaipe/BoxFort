@@ -37,7 +37,7 @@ Alpine (gcc,aarch64)_task:
 
 MacOS_task:
   osx_instance:
-    image: mojave-xcode-10.2
+    image: monterey-xcode-13.2
   setup_script: brew install meson
   <<: *pipeline
 
@@ -58,4 +58,3 @@ Windows_task:
     pip install meson
   ninja-setup_script: choco install -y --no-progress ninja
   <<: *pipeline
-
