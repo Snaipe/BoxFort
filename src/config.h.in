@@ -53,6 +53,7 @@
 #mesondefine HAVE_CLOCK_MONOTONIC_RAW
 #mesondefine HAVE_GETTIMEOFDAY
 #mesondefine HAVE_MACH_VM_PROTECT
+#mesondefine HAVE___BUILTIN___CLEAR_CACHE
 #mesondefine HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE_NP
 #mesondefine HAVE_ENVIRON
 #mesondefine HAVE_MINCORE

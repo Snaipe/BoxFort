@@ -132,6 +132,8 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     mem_protect(base, len, PROT_READ | PROT_WRITE | PROT_EXEC);
     memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
     mem_protect(base, len, PROT_READ | PROT_EXEC);
+    bxfi_exe_clear_cache(addr, sizeof(opcodes));
+
     return 0;
 }
 

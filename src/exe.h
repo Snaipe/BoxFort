@@ -43,4 +43,11 @@ const char *bxfi_lib_name(bxfi_exe_lib lib);
 void bxfi_lib_name_term(const char *str);
 size_t bxfi_exe_get_vmslide(bxfi_exe_lib lib);
 
+static inline void bxfi_exe_clear_cache(void *addr, size_t len)
+{
+#if defined (HAVE___BUILTIN___CLEAR_CACHE)
+    __builtin___clear_cache((char *) addr, (char *) addr + len);
+#endif
+}
+
 #endif /* !PLT_H_ */

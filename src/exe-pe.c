@@ -94,6 +94,8 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     VirtualProtect(base, len, PAGE_EXECUTE_READWRITE, &old);
     memcpy(nonstd (void *) addr, opcodes, size);
     VirtualProtect(base, len, old, NULL);
+    bxfi_exe_clear_cache(addr, size);
+
     return 0;
 }
 

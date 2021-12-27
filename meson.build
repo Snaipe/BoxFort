@@ -126,6 +126,7 @@ checks = [
 	{'fn': 'prctl'},
 	{'fn': 'shm_open'},
 	{'fn': 'mach_vm_protect'},
+	{'fn': '__builtin___clear_cache'},
 
 	# some platforms define mincore with an unsigned vector
 	{
