@@ -129,7 +129,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
     size_t len = align2_up(offset + sizeof (opcodes), PAGE_SIZE);
 
-    mem_protect(base, len, PROT_READ | PROT_WRITE | PROT_EXEC);
+    mem_protect(base, len, PROT_READ | PROT_WRITE);
     memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
     mem_protect(base, len, PROT_READ | PROT_EXEC);
     bxfi_exe_clear_cache(addr, sizeof(opcodes));
