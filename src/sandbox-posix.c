@@ -480,9 +480,11 @@ static int setup_inheritance(bxf_sandbox *sandbox)
             }
         }
 
-        /* /dev/fd is somewhat more common than /proc/self/fd; we'll handle
-           special cases later. */
         int fds = open("/dev/fd", O_RDONLY | O_DIRECTORY);
+
+        if (fds == -1) {
+            fds = open("/proc/self/fd", O_RDONLY | O_DIRECTORY);
+        }
 
         if (fds >= 0) {
             /* this is somewhat problematic, as fdopendir/readdir are not
