@@ -21,18 +21,23 @@ Alpine (gcc,i386)_task:
     image: snaipe/ci-meson:alpine-x86
   <<: *pipeline
 
-Alpine (gcc,arm)_task:
-  container:
-    image: snaipe/ci-meson:alpine-armhf
-  env:
-    CIRRUS_SHELL: /sbin/qemu-sh
+Alpine (gcc,arm32v6)_task:
+  arm_container:
+    image: arm32v6/alpine:3
+  setup_script: &alpine-arm-deps |-
+    apk add --no-cache build-base meson ninja git
+  <<: *pipeline
+
+Alpine (gcc,arm32v7)_task:
+  arm_container:
+    image: arm32v7/alpine:3
+  setup_script: *alpine-arm-deps
   <<: *pipeline
 
 Alpine (gcc,aarch64)_task:
-  container:
-    image: snaipe/ci-meson:alpine-aarch64
-  env:
-    CIRRUS_SHELL: /sbin/qemu-sh
+  arm_container:
+    image: arm64v8/alpine:3
+  setup_script: *alpine-arm-deps
   <<: *pipeline
 
 MacOS_task:
