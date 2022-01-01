@@ -24,12 +24,15 @@
 #include "config.h"
 #include "mangling.h"
 
+.arm
+
 #ifdef ASSEMBLER_SUPPORTS_HIDDEN
 .hidden MANGLE(bxfi_trampoline)
 #endif
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
-    ldr     pc, addr_data
+    ldr     r3, addr_data
+    bx      r3
 
 .align 2
 
