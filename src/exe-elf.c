@@ -30,14 +30,9 @@
 #include "config.h"
 #include "exe.h"
 #include "exe-elf.h"
+#include "exe-trampoline-fixup.h"
 #include "addr.h"
 #include "common.h"
-
-#if defined (BXF_ARCH_ARM)
-# include "exe-elf-arm-fixup.h"
-#else
-# include "exe-elf-general-fixup.h"
-#endif
 
 #if BXF_BITS == 32
 typedef Elf32_Word ElfWord;

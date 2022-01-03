@@ -22,15 +22,16 @@
  * THE SOFTWARE.
  */
 
-#ifndef EXE_ELF_ARM_FIXUP_H_
-#define EXE_ELF_ARM_FIXUP_H_
-
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
+#include "config.h"
 #include "common.h"
-#include "exe-elf.h"
+#include "exe.h"
+#include "exe-trampoline-fixup.h"
+
+#if defined (BXF_ARCH_ARM)
 
 extern void *bxfi_trampoline_thumb;
 extern void *bxfi_trampoline_thumb_addr;
@@ -55,7 +56,7 @@ static inline int bxfi_exe_is_arm_func_word_aligned(void *func_addr)
     return ((uintptr_t) func_addr & 0x3U) == 0;
 }
 
-static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
+void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
         void **trampoline_end, void **trampoline_addr)
 {
     if (bxfi_exe_is_arm_thumb_func(*func_to_patch)) {
@@ -67,7 +68,7 @@ static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampo
     bxfi_exe_fix_func_addr_if_in_arm_thumb_mode(func_to_patch);
 }
 
-static inline size_t bxfi_exe_inject_prelude(void *func_to_patch)
+size_t bxfi_exe_inject_prelude(void *func_to_patch)
 {
     if (bxfi_exe_is_arm_func_word_aligned(func_to_patch))
         return 0;
@@ -77,4 +78,17 @@ static inline size_t bxfi_exe_inject_prelude(void *func_to_patch)
     return nop_len;
 }
 
-#endif /* !EXE_ELF_ARM_FIXUP_H_ */
+#else
+
+void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
+        void **trampoline_end, void **trampoline_addr)
+{
+    return;
+}
+
+size_t bxfi_exe_inject_prelude(void *func_to_patch)
+{
+    return 0;
+}
+
+#endif

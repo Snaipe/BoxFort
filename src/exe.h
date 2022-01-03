@@ -36,6 +36,10 @@
 # include "exe-mach-o.h"
 #endif
 
+#define BXFI_TRAMPOLINE_SIZE(Start, End) \
+    ((uintptr_t) End    \
+    - (uintptr_t) Start)
+
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main);
 uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg);
 uintptr_t bxfi_slide_from_name(const char *name, size_t seg);

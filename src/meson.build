@@ -6,6 +6,8 @@ sources = files(
 	'context.c',
 	'context.h',
 	'exe.h',
+	'exe-trampoline-fixup.c',
+	'exe-trampoline-fixup.h',
 	'exe-@0@.c'.format(binfmt),
 	'exe-@0@.h'.format(binfmt),
 	'sandbox-@0@.c'.format(os_family),

@@ -22,20 +22,14 @@
  * THE SOFTWARE.
  */
 
-#ifndef EXE_ELF_GENERAL_FIXUP_H_
-#define EXE_ELF_GENERAL_FIXUP_H_
+#ifndef EXE_TRAMPOLINE_FIXUP_H_
+#define EXE_TRAMPOLINE_FIXUP_H_
 
 #include <stddef.h>
 
-static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
-        void **trampoline_end, void **trampoline_addr)
-{
-    return;
-}
+void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
+        void **trampoline_end, void **trampoline_addr);
 
-static inline size_t bxfi_exe_inject_prelude(void *func_to_patch)
-{
-    return 0;
-}
+size_t bxfi_exe_inject_prelude(void *func_to_patch);
 
-#endif /* !EXE_ELF_GENERAL_FIXUP_H_ */
+#endif /* !EXE_TRAMPOLINE_FIXUP_H_ */
