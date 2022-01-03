@@ -29,6 +29,7 @@
 
 #include "config.h"
 #include "exe.h"
+#include "exe-elf.h"
 #include "addr.h"
 #include "common.h"
 
@@ -157,10 +158,6 @@ extern int main(void);
 extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
-
-#define BXFI_TRAMPOLINE_SIZE(Start, End) \
-    ((uintptr_t) End    \
-    - (uintptr_t) Start)
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
