@@ -29,9 +29,15 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "common.h"
+#include "exe-elf.h"
+
 extern void *bxfi_trampoline_thumb;
 extern void *bxfi_trampoline_thumb_addr;
 extern void *bxfi_trampoline_thumb_end;
+
+extern void *bxfi_trampoline_thumb_nop;
+extern void *bxfi_trampoline_thumb_nop_end;
 
 static inline int bxfi_exe_is_arm_thumb_func(void *func_addr)
 {
@@ -42,6 +48,11 @@ static inline int bxfi_exe_is_arm_thumb_func(void *func_addr)
 static inline void bxfi_exe_fix_func_addr_if_in_arm_thumb_mode(void **addr)
 {
     *addr = (void *) (uintptr_t) ((uintptr_t) *addr & ~0x1ULL);
+}
+
+static inline int bxfi_exe_is_arm_func_word_aligned(void *func_addr)
+{
+    return ((uintptr_t) func_addr & 0x3U) == 0;
 }
 
 static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
@@ -58,7 +69,12 @@ static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampo
 
 static inline size_t bxfi_exe_inject_prelude(void *func_to_patch)
 {
-    return 0;
+    if (bxfi_exe_is_arm_func_word_aligned(func_to_patch))
+        return 0;
+
+    size_t nop_len = BXFI_TRAMPOLINE_SIZE(&bxfi_trampoline_thumb_nop, &bxfi_trampoline_thumb_nop_end);
+    memcpy(nonstd (void *) func_to_patch, &bxfi_trampoline_thumb_nop, nop_len);
+    return nop_len;
 }
 
 #endif /* !EXE_ELF_ARM_FIXUP_H_ */

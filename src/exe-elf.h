@@ -33,6 +33,10 @@
 # define ElfW__(e, t) e ## t
 #endif
 
+#define BXFI_TRAMPOLINE_SIZE(Start, End) \
+    ((uintptr_t) End    \
+    - (uintptr_t) Start)
+
 typedef struct link_map *bxfi_exe_lib;
 typedef struct r_debug *bxfi_exe_ctx;
 typedef void (bxfi_exe_fn)(void);
