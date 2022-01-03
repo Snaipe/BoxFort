@@ -32,6 +32,8 @@
 #include "addr.h"
 #include "common.h"
 
+#include "exe-elf-general-fixup.h"
+
 #if BXF_BITS == 32
 typedef Elf32_Word ElfWord;
 typedef Elf32_Sword ElfSWord;
@@ -152,9 +154,9 @@ extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
-#define BXFI_TRAMPOLINE_SIZE          \
-    ((uintptr_t) &bxfi_trampoline_end \
-    - (uintptr_t) &bxfi_trampoline)
+#define BXFI_TRAMPOLINE_SIZE(Start, End) \
+    ((uintptr_t) End    \
+    - (uintptr_t) Start)
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
 {
@@ -163,12 +165,17 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     if (!addr)
         return -1;
 
-    /* Reserve enough space for the trampoline and copy the default opcodes */
-    char opcodes[BXFI_TRAMPOLINE_SIZE];
-    memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
+    void *trampoline = &bxfi_trampoline;
+    void *trampoline_end = &bxfi_trampoline_end;
+    void *trampoline_addr = &bxfi_trampoline_addr;
+    bxfi_exe_trampoline_fixup(&addr, &trampoline, &trampoline_end, &trampoline_addr);
 
-    uintptr_t jmp_offset = (uintptr_t) &bxfi_trampoline_addr
-            - (uintptr_t) &bxfi_trampoline;
+    /* Reserve enough space for the trampoline and copy the default opcodes */
+    char opcodes[BXFI_TRAMPOLINE_SIZE(trampoline, trampoline_end)];
+    memcpy(opcodes, trampoline, sizeof (opcodes));
+
+    uintptr_t jmp_offset = (uintptr_t) trampoline_addr
+            - (uintptr_t) trampoline;
 
     /* The trampoline code is a jump followed by an aligned pointer value --
        after copying the jmp opcode, we write this pointer value. */
