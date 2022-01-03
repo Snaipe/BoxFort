@@ -33,4 +33,9 @@ static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampo
     return;
 }
 
+static inline size_t bxfi_exe_inject_prelude(void *func_to_patch)
+{
+    return 0;
+}
+
 #endif /* !EXE_ELF_GENERAL_FIXUP_H_ */
