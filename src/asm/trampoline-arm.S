@@ -50,4 +50,55 @@ addr_data:
 .globl MANGLE(bxfi_trampoline_end)
 MANGLE(bxfi_trampoline_end):
 
+
+/* ARM Thumb mode */
+
+.syntax unified
+.thumb
+
+/* carefully aligned, so that the following LDR pseudo-instruction will be
+ * word-aligned, which is important because the same instruction on a
+ * halfword-aligned address generates a jump with a different PC-relative offset
+ */
+.align 2
+
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
+.hidden MANGLE(bxfi_trampoline_thumb)
+#endif
+.globl MANGLE(bxfi_trampoline_thumb)
+MANGLE(bxfi_trampoline_thumb):
+    ldr     r3, addr_data_thumb
+    bx      r3
+
+.align 2
+
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
+.hidden MANGLE(bxfi_trampoline_thumb_addr)
+#endif
+.globl MANGLE(bxfi_trampoline_thumb_addr)
+MANGLE(bxfi_trampoline_thumb_addr):
+addr_data_thumb:
+.fill 4, 1, 0
+
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
+.hidden MANGLE(bxfi_trampoline_thumb_end)
+#endif
+.globl MANGLE(bxfi_trampoline_thumb_end)
+MANGLE(bxfi_trampoline_thumb_end):
+
+.align 2
+
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
+.hidden MANGLE(bxfi_trampoline_thumb_nop)
+#endif
+.globl MANGLE(bxfi_trampoline_thumb_nop)
+MANGLE(bxfi_trampoline_thumb_nop):
+    nop
+
+#ifdef ASSEMBLER_SUPPORTS_HIDDEN
+.hidden MANGLE(bxfi_trampoline_thumb_nop_end)
+#endif
+.globl MANGLE(bxfi_trampoline_thumb_nop_end)
+MANGLE(bxfi_trampoline_thumb_nop_end):
+
 #include "stackfix.h"
