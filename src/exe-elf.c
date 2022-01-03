@@ -32,7 +32,11 @@
 #include "addr.h"
 #include "common.h"
 
-#include "exe-elf-general-fixup.h"
+#if defined (BXF_ARCH_ARM)
+# include "exe-elf-arm-fixup.h"
+#else
+# include "exe-elf-general-fixup.h"
+#endif
 
 #if BXF_BITS == 32
 typedef Elf32_Word ElfWord;
