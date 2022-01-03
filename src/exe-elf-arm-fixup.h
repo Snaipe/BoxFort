@@ -27,6 +27,16 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
+
+extern void *bxfi_trampoline_thumb;
+extern void *bxfi_trampoline_thumb_addr;
+extern void *bxfi_trampoline_thumb_end;
+
+static inline int bxfi_exe_is_arm_thumb_func(void *func_addr)
+{
+    return (uintptr_t) func_addr & 0x1U;
+}
 
 /* The returned address should not be called, it is meant to be used for patching */
 static inline void bxfi_exe_fix_func_addr_if_in_arm_thumb_mode(void **addr)
@@ -37,6 +47,12 @@ static inline void bxfi_exe_fix_func_addr_if_in_arm_thumb_mode(void **addr)
 static inline void bxfi_exe_trampoline_fixup(void **func_to_patch, void **trampoline,
         void **trampoline_end, void **trampoline_addr)
 {
+    if (bxfi_exe_is_arm_thumb_func(*func_to_patch)) {
+        *trampoline = &bxfi_trampoline_thumb;
+        *trampoline_end = &bxfi_trampoline_thumb_end;
+        *trampoline_addr = &bxfi_trampoline_thumb_addr;
+    }
+
     bxfi_exe_fix_func_addr_if_in_arm_thumb_mode(func_to_patch);
 }
 
