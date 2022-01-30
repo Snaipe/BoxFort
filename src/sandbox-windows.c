@@ -410,7 +410,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         TCHAR *cmdline = NULL;
         SIZE_T size;
 
-        switch (sandbox->debug.debugger) {
+        switch (BXF_DBG_GET_DEBUGGER(sandbox->debug.debugger)) {
             case BXF_DBG_WINDBG: {
                 dbg = TEXT("windbg");
                 TCHAR *fmt = TEXT("boxfort-worker -server tcp:port=%d %s %s");

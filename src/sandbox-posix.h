@@ -49,6 +49,10 @@ struct bxfi_map {
 struct bxfi_sandbox {
     struct bxf_instance_s props;
 
+    /* Set to 1 when BXF_DBG_ENABLE_FALLBACK is requested and the
+       selected debugger is not available */
+    int debug_falls_back_to_suspend;
+
     /* A sandbox is said to be mantled if there is an unique instance
        managing its memory. */
     int mantled;

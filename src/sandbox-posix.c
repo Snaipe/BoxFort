@@ -675,17 +675,22 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         return -EINVAL;
 
     char dbg_full[PATH_MAX];
+    int debug_falls_back_to_suspend = 0;
     if (sandbox->debug.debugger) {
         const char *dbg = NULL;
-        switch (sandbox->debug.debugger) {
+        switch (BXF_DBG_GET_DEBUGGER(sandbox->debug.debugger)) {
             case BXF_DBG_GDB:   dbg = "gdbserver"; break;
             case BXF_DBG_LLDB:  dbg = "lldb-server"; break;
             default:
                 return -EINVAL;
         }
 
-        if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0)
-            return -ENOENT;
+        if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0) {
+            if(!BXF_DBG_IS_FALLBACK_ENABLED(sandbox->debug.debugger))
+                return -ENOENT;
+
+            debug_falls_back_to_suspend = 1;
+        }
     }
 
     errnum = -ENOMEM;
@@ -694,6 +699,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (!instance)
         goto err;
     *instance = (struct bxfi_sandbox) {
+        .debug_falls_back_to_suspend = debug_falls_back_to_suspend,
         .mantled  = mantled,
         .callback = callback,
         .user = user,
@@ -739,7 +745,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
         local_ctx.ctx->fn       = addr.addr;
         local_ctx.ctx->seg      = addr.seg;
         local_ctx.ctx->pid      = pid;
-        local_ctx.ctx->suspend  = sandbox->suspended;
+        local_ctx.ctx->suspend  = sandbox->suspended || instance->debug_falls_back_to_suspend;
         bxf_context ictx = sandbox->inherit.context;
         if (ictx) {
 #ifdef BXF_ARENA_REOPEN_SHM
@@ -788,7 +794,7 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
 
         kill(pid, SIGCONT);
 
-        if (sandbox->suspended)
+        if (sandbox->suspended || instance->debug_falls_back_to_suspend)
             instance->props.status.stopped = 1;
 
         *out = &instance->props;
@@ -796,7 +802,9 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     }
 
 #if defined (HAVE_PR_SET_PDEATHSIG)
-    int pdeathsig = sandbox->debug.debugger ? SIGTERM : SIGKILL;
+    int pdeathsig = (BXF_DBG_GET_DEBUGGER(sandbox->debug.debugger) && !instance->debug_falls_back_to_suspend)
+        ? SIGTERM : SIGKILL;
+
     prctl(PR_SET_PDEATHSIG, pdeathsig);
 #endif
 
@@ -831,10 +839,10 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     char *argv[16] = { "boxfort-worker" };
     size_t argc = 1;
 
-    if (sandbox->debug.debugger) {
+    if (sandbox->debug.debugger && !instance->debug_falls_back_to_suspend) {
         char port[11];
 
-        switch (sandbox->debug.debugger) {
+        switch (BXF_DBG_GET_DEBUGGER(sandbox->debug.debugger)) {
             case BXF_DBG_GDB:
                 snprintf(port, sizeof (port), ":%d", sandbox->debug.tcp);
                 break;

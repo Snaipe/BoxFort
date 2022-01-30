@@ -203,6 +203,8 @@ enum bxf_debugger {
     BXF_DBG_GDB, /* Spawn with gdbserver */
     BXF_DBG_LLDB, /* Spawn with lldb-server */
     BXF_DBG_WINDBG, /* Spawn with windbg (Windows only) */
+    /* add up to 32 debuggers here */
+    BXF_DBG_FALLBACK = 0x20 /* fallback to suspended sandbox */
 };
 
 #if defined (__clang__)
@@ -212,6 +214,10 @@ enum bxf_debugger {
 #elif defined (_WIN32)
 # define BXF_DBG_NATIVE BXF_DBG_WINDBG
 #endif
+
+#define BXF_DBG_ENABLE_FALLBACK(debugger) (debugger |= BXF_DBG_FALLBACK)
+#define BXF_DBG_IS_FALLBACK_ENABLED(debugger) (debugger & BXF_DBG_FALLBACK)
+#define BXF_DBG_GET_DEBUGGER(debugger) (debugger & ~BXF_DBG_FALLBACK)
 
 struct bxf_debug {
     enum bxf_debugger debugger;
