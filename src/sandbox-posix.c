@@ -674,16 +674,23 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
     if (bxfi_normalize_fnaddr(fn, &addr) < 0)
         return -EINVAL;
 
-    char dbg_full[PATH_MAX];
     int debug_falls_back_to_suspend = 0;
+    char dbg_full[PATH_MAX];
+    const char *dbg = NULL;
     if (sandbox->debug.debugger) {
-        const char *dbg = NULL;
         switch (BXF_DBG_GET_DEBUGGER(sandbox->debug.debugger)) {
             case BXF_DBG_GDB:   dbg = "gdbserver"; break;
             case BXF_DBG_LLDB:  dbg = "lldb-server"; break;
             default:
                 return -EINVAL;
         }
+
+#ifdef __APPLE__
+        if(BXF_DBG_IS_FALLBACK_ENABLED(sandbox->debug.debugger) &&
+            find_exe("debugserver", dbg_full, sizeof (dbg_full)) == 0) {
+            dbg = "debugserver";
+        }
+#endif
 
         if (find_exe(dbg, dbg_full, sizeof (dbg_full)) < 0) {
             if(!BXF_DBG_IS_FALLBACK_ENABLED(sandbox->debug.debugger))
@@ -847,7 +854,8 @@ int bxfi_exec(bxf_instance **out, bxf_sandbox *sandbox,
                 snprintf(port, sizeof (port), ":%d", sandbox->debug.tcp);
                 break;
             case BXF_DBG_LLDB:
-                argv[argc++] = "gdbserver";
+                if (strcmp(dbg, "debugserver") != 0)
+                    argv[argc++] = "gdbserver";
                 snprintf(port, sizeof (port), "*:%d", sandbox->debug.tcp);
                 break;
             default:
