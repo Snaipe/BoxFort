@@ -76,6 +76,18 @@ static inline void *ptr_add(void *ptr, size_t off)
 
 #define get_free_chunks(arena) (ptr_add(*arena, (*arena)->free_chunks))
 
+#if !defined (_WIN32)
+static int page_mapped_msync(void *addr) {
+    if (!msync(addr, pagesize(), MS_ASYNC))
+        return 1;
+
+    if (errno == ENOMEM)
+        return 0;
+
+    bug("msync(2) returned an unexpected error");
+}
+#endif
+
 static int page_mapped(void *addr) {
 #ifdef _WIN32
     MEMORY_BASIC_INFORMATION mbi;
@@ -102,11 +114,7 @@ static int page_mapped(void *addr) {
     }
     bug("mincore(2) returned an unexpected error");
 #else
-    if (!msync(addr, pagesize(), MS_ASYNC))
-        return 1;
-    if (errno == ENOMEM)
-        return 0;
-    bug("msync(2) returned an unexpected error");
+    return page_mapped_msync(addr);
 #endif
 }
 
