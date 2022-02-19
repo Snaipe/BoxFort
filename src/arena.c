@@ -111,6 +111,9 @@ static int page_mapped(void *addr) {
             return 1;
         if (errno == ENOMEM)
             return 0;
+
+        if (errno == ENOSYS || errno == ENOTSUP)
+            return page_mapped_msync(addr);
     }
     bug("mincore(2) returned an unexpected error");
 #else
