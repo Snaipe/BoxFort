@@ -51,6 +51,9 @@ EXPORT int main(void)
     long my_long = 24;
     _assert(!bxf_context_addobject(ctx, "long_id", &my_long, sizeof (my_long)));
 
+    /* Check that my_long is aligned in memory */
+    _assert(((uintptr_t)my_long % sizeof (void *)) == 0);
+
     /* We run the child function with the created context */
     _assert(!bxf_run(child, .inherit.context = ctx));
 
