@@ -2,7 +2,7 @@ _pipeline: &pipeline
   info_script: |
     meson --version
     ninja --version
-  configure_script: meson build
+  configure_script: meson setup build
   compile_script: ninja -C build
   test_script: ninja -C build test
 
@@ -41,8 +41,8 @@ Alpine (gcc,aarch64)_task:
   <<: *pipeline
 
 MacOS_task:
-  osx_instance:
-    image: monterey-xcode-13.2
+  macos_instance:
+    image: ghcr.io/cirruslabs/macos-ventura-base:latest
   setup_script: brew install meson
   <<: *pipeline
 
