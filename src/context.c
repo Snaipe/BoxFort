@@ -108,9 +108,12 @@ int bxf_context_addobject(bxf_context ctx, const char *name,
 {
     struct bxfi_ctx_object *elt;
 
-    size_t len = strlen(name) + 1;
+    size_t namesz  = strlen(name) + 1;
+    size_t overhead = sizeof(*elt) + namesz;
+    size_t alignment = overhead % sizeof(void*);
+    size_t padding = alignment ? sizeof(void*) - alignment : 0;
 
-    bxf_ptr p = bxf_arena_alloc(&ctx->arena, sizeof (*elt) + len + size);
+    bxf_ptr p = bxf_arena_alloc(&ctx->arena, overhead + padding + size);
 
     if (p < 0)
         return p;
@@ -118,9 +121,10 @@ int bxf_context_addobject(bxf_context ctx, const char *name,
     elt = bxf_arena_ptr(ctx->arena, p);
 
     elt->tag    = BXFI_TAG_OBJECT;
-    elt->namesz = len;
-    memcpy(&elt->data, name, len);
-    memcpy(&elt->data[elt->namesz], ptr, size);
+    elt->namesz = namesz;
+    elt->offset = namesz + padding;
+    memcpy(&elt->data, name, namesz);
+    memcpy(&elt->data[elt->offset], ptr, size);
     return 0;
 }
 
@@ -141,7 +145,7 @@ static int find_obj(void *ptr, size_t size, void *user)
 
     struct bxfi_ctx_object *obj = ptr;
     if (!strcmp(obj->data, ctx->name)) {
-        ctx->result = &obj->data[obj->namesz];
+        ctx->result = &obj->data[obj->offset];
         return 1;
     }
     return 0;
@@ -167,22 +171,27 @@ int bxf_context_addaddr(bxf_context ctx, const char *name, const void *addr)
 
     struct bxfi_ctx_object *elt;
 
+    size_t namesz  = strlen(name) + 1;
+    size_t overhead = sizeof(*elt) + namesz;
+    size_t alignment = overhead % sizeof(void*);
+    size_t padding = alignment ? sizeof(void*) - alignment : 0;
+
     size_t sonamelen = strlen(norm.soname) + 1;
     size_t size = sizeof (void *) + sizeof (norm.seg) + sonamelen;
-    size_t len  = strlen(name) + 1;
 
-    bxf_ptr p = bxf_arena_alloc(&ctx->arena, sizeof (*elt) + len + size);
+    bxf_ptr p = bxf_arena_alloc(&ctx->arena, overhead + padding + size);
     if (p < 0)
         return p;
 
     elt = bxf_arena_ptr(ctx->arena, p);
 
     elt->tag    = BXFI_TAG_OBJECT;
-    elt->namesz = len;
+    elt->namesz = namesz;
+    elt->offset = namesz + padding;
 
     size_t i = 0;
-    memcpy(&elt->data[i], name, len);
-    i += elt->namesz;
+    memcpy(&elt->data[i], name, namesz);
+    i += elt->offset;
     memcpy(&elt->data[i], &norm.addr, sizeof (void *));
     i += sizeof (void *);
     memcpy(&elt->data[i], &norm.seg, sizeof (norm.seg));
