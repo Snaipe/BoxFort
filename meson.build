@@ -86,6 +86,8 @@ elif arch == 'arm'
 	bitness = 32
 elif arch == 'aarch64'
 	bitness = 64
+elif arch == 'riscv64'
+	bitness = 64
 else
 	error('Architecture "@0@" is not supported.'.format(arch))
 endif
