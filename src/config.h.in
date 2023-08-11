@@ -29,6 +29,8 @@
 #mesondefine BXF_MANGLING
 #mesondefine BXF_OS_FAMILY
 
+#mesondefine BXF_MEM_ADDR_BITS
+
 # ifdef BXF_OS_FAMILY
 #  define BXF_OS_FAMILY_STR #BXF_OS_FAMILY
 # endif

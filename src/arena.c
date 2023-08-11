@@ -54,11 +54,19 @@ static void *mmap_max  = (void *) 0x80000000;
 static intptr_t mmap_off = (intptr_t) 1 << 16;
 static intptr_t mmap_off_mask = 0x3fff;
 #elif BXF_BITS == 64
+# ifndef BXF_MEM_ADDR_BITS
 /* On Linux it seems that you cannot map > 48-bit addresses */
 static void *mmap_base = (void *) 0x200000000000;
 static void *mmap_max  = (void *) 0x7f0000000000;
 static intptr_t mmap_off = (intptr_t) 1 << 24;
 static intptr_t mmap_off_mask = 0x3fffff;
+# elif BXF_MEM_ADDR_BITS == 39
+/* 39-bit virtual memory scheme is used in some riscv64 or amd64 machines */
+static void *mmap_base = (void *) 0x1000000000;
+static void *mmap_max  = (void *) 0x3f00000000;
+static intptr_t mmap_off = (intptr_t) 1 << 20;
+static intptr_t mmap_off_mask = 0x1ffff;
+# endif
 #else
 # error Platform not supported
 #endif
