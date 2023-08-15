@@ -78,6 +78,8 @@ if cc.symbols_have_underscore_prefix()
 	mangling = 'leading-underscore'
 endif
 
+memory_addr_bits = 'undefined'
+
 if arch == 'x86'
 	bitness = 32
 elif arch == 'x86_64'
@@ -88,6 +90,9 @@ elif arch == 'aarch64'
 	bitness = 64
 elif arch == 'riscv64'
 	bitness = 64
+	# 39 bit virtual address scheme(sv39) is widely used in riscv64 in 2023
+	# still need to find a stable method to detect address scheme in user mode
+	memory_addr_bits = '39'
 else
 	error('Architecture "@0@" is not supported.'.format(arch))
 endif
@@ -120,6 +125,10 @@ config.set('BXF_ARCH', '"' + arch + '"')
 config.set('BXF_ARCH_@0@'.format(arch.to_upper()), 1)
 config.set('BXF_MANGLING', mangling)
 config.set('BXF_BITS', bitness)
+
+if memory_addr_bits != 'undefined'
+	config.set('BXF_MEM_ADDR_BITS', memory_addr_bits)
+endif
 
 checks = [
 	{'fn': 'clock_gettime'},
