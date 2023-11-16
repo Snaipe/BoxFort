@@ -64,13 +64,17 @@ deps = [
 	libm,
 ]
 
-extra_cflags = cc.get_supported_arguments([
-	'-DBXF_STATIC_LIB=1',
-])
+extra_cflags = []
+if get_option('default_library') == 'static'
+	extra_cflags += cc.get_supported_arguments([
+		'-DBXF_STATIC_LIB=1',
+	])
+endif
 
-libboxfort = static_library('boxfort', sources,
+libboxfort = library('boxfort', sources,
 	include_directories: [boxfort_includedir],
 	dependencies: deps,
+	version: meson.project_version(),
 	install: not meson.is_subproject(),
 	link_args: cc.get_supported_link_arguments([
 		'-Wl,--exclude-libs,ALL',
