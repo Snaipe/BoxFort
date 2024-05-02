@@ -42,7 +42,7 @@ Alpine (gcc,aarch64)_task:
 
 MacOS_task:
   macos_instance:
-    image: ghcr.io/cirruslabs/macos-ventura-base:latest
+    image: ghcr.io/cirruslabs/macos-sonoma-base:latest
   setup_script: brew install meson
   <<: *pipeline
 
