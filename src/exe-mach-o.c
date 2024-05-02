@@ -74,10 +74,6 @@ extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
 extern void *bxfi_trampoline_end;
 
-#define BXFI_TRAMPOLINE_SIZE          \
-    ((uintptr_t) &bxfi_trampoline_end \
-    - (uintptr_t) &bxfi_trampoline)
-
 static int mem_protect(void *addr, size_t len, int prot)
 {
     int result = mprotect(addr, len, prot);
@@ -115,7 +111,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
         return -1;
 
     /* Reserve enough space for the trampoline and copy the default opcodes */
-    char opcodes[BXFI_TRAMPOLINE_SIZE];
+    char opcodes[BXFI_TRAMPOLINE_SIZE(&bxfi_trampoline, &bxfi_trampoline_end)];
     memcpy(opcodes, &bxfi_trampoline, sizeof (opcodes));
 
     uintptr_t jmp_offset = (uintptr_t) &bxfi_trampoline_addr
