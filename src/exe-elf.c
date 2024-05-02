@@ -148,7 +148,7 @@ static bxfi_exe_ctx init_exe_ctx(void)
     return dbg;
 }
 
-extern int main(void);
+extern int main();
 
 extern void *bxfi_trampoline;
 extern void *bxfi_trampoline_addr;
