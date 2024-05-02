@@ -61,6 +61,7 @@ struct bxfi_ctx_arena {
 struct bxfi_ctx_object {
     enum bxfi_ctx_tag tag;
     size_t namesz;
+    size_t offset;
     char data[];
 };
 
