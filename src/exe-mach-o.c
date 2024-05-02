@@ -90,17 +90,50 @@ static int mem_protect(void *addr, size_t len, int prot)
     if (prot & PROT_EXEC)
         mach_prot |= VM_PROT_EXECUTE;
 
-    if (mach_vm_protect(mach_task_self(), (mach_vm_address_t) addr, len, FALSE, mach_prot) == 0)
-        return 0;
-
-    /* When a caller finds that he cannot obtain write permission on a mapped entry, the following flag can be used. */
-    if (prot & PROT_WRITE)
-        mach_prot |= VM_PROT_COPY;
-
     result = mach_vm_protect(mach_task_self(), (mach_vm_address_t) addr, len, FALSE, mach_prot);
 #endif
 
     return result;
+}
+
+static int bxfi_exe_remapped_patch_main(void *addr, size_t len,
+    const void *opcodes, size_t opcodes_len)
+{
+    mach_vm_address_t remapped;
+    vm_prot_t cur_prot;
+    vm_prot_t max_prot;
+
+    kern_return_t result = mach_vm_remap(mach_task_self(), &remapped, len, 0,
+        VM_FLAGS_ANYWHERE | VM_FLAGS_RETURN_DATA_ADDR,
+        mach_task_self(), (mach_vm_address_t) addr, FALSE, &cur_prot, &max_prot, VM_INHERIT_NONE);
+
+    if (result != KERN_SUCCESS)
+        return -1;
+
+    result = mach_vm_protect(mach_task_self(), (mach_vm_address_t) remapped, len, FALSE,
+        VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);
+
+    if (result != KERN_SUCCESS)
+        return -1;
+
+    result = mach_vm_write(mach_task_self(), remapped, (vm_offset_t) opcodes, opcodes_len);
+    if (result != KERN_SUCCESS)
+        return -1;
+
+    result = mach_vm_protect(mach_task_self(), remapped, len, FALSE, VM_PROT_READ | VM_PROT_EXECUTE);
+    if (result != KERN_SUCCESS)
+        return -1;
+
+    result = mach_vm_remap(mach_task_self(), (mach_vm_address_t *) &addr, len, 0,
+        VM_FLAGS_OVERWRITE | VM_FLAGS_RETURN_DATA_ADDR,
+        mach_task_self(), remapped, FALSE, &cur_prot, &max_prot, VM_INHERIT_NONE);
+
+    if (result != KERN_SUCCESS)
+        return -1;
+
+    bxfi_exe_clear_cache(addr, len);
+
+    return 0;
 }
 
 int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
@@ -125,10 +158,14 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
     size_t len = align2_up(offset + sizeof (opcodes), BXFI_PAGE_SIZE);
 
-    mem_protect(base, len, PROT_READ | PROT_WRITE);
-    memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
-    mem_protect(base, len, PROT_READ | PROT_EXEC);
-    bxfi_exe_clear_cache(addr, sizeof(opcodes));
+    if (mem_protect(base, len, PROT_READ | PROT_WRITE) == 0) {
+        memcpy(nonstd (void *) addr, opcodes, sizeof (opcodes));
+        mem_protect(base, len, PROT_READ | PROT_EXEC);
+        bxfi_exe_clear_cache(addr, sizeof(opcodes));
+        return 0;
+    }
+
+    bxfi_exe_remapped_patch_main(addr, sizeof(opcodes), opcodes, sizeof(opcodes));
 
     return 0;
 }
