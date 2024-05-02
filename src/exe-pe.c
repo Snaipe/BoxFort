@@ -86,9 +86,9 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
        after copying the jmp opcode, we write this pointer value. */
     *(uintptr_t *) (&opcodes[jmp_offset]) = (uintptr_t) new_main;
 
-    void *base = (void *) align2_down((uintptr_t) addr, PAGE_SIZE);
+    void *base = (void *) align2_down((uintptr_t) addr, BXFI_PAGE_SIZE);
     uintptr_t offset = (uintptr_t) addr - (uintptr_t) base;
-    size_t len = align2_up(offset + size, PAGE_SIZE);
+    size_t len = align2_up(offset + size, BXFI_PAGE_SIZE);
 
     DWORD old;
     VirtualProtect(base, len, PAGE_EXECUTE_READWRITE, &old);

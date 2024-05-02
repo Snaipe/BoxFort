@@ -123,9 +123,9 @@ static int page_mapped(void *addr) {
 
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 {
-    initial = align2_up(initial, PAGE_SIZE);
+    initial = align2_up(initial, BXFI_PAGE_SIZE);
     if (!initial)
-        initial = 32 * PAGE_SIZE;
+        initial = 32 * BXFI_PAGE_SIZE;
 
 #ifdef _WIN32
     SECURITY_ATTRIBUTES inherit = {
@@ -164,7 +164,7 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
             continue;
 
         for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, PAGE_SIZE))
+                addr = ptr_add(addr, BXFI_PAGE_SIZE))
         {
             if (page_mapped(addr))
                 goto retry;
@@ -247,7 +247,7 @@ retry:  ;
             continue;
 
         for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, PAGE_SIZE))
+                addr = ptr_add(addr, BXFI_PAGE_SIZE))
         {
             if (page_mapped(addr))
                 goto retry;
@@ -451,7 +451,7 @@ static int arena_resize(bxf_arena *arena, size_t newsize)
     size_t remsz  = newsize - (*arena)->size;
     char *addr_hi = ptr_add(*arena, (*arena)->size);
     int move = 0;
-    for (char *addr = addr_hi; remsz; remsz -= PAGE_SIZE, addr += PAGE_SIZE) {
+    for (char *addr = addr_hi; remsz; remsz -= BXFI_PAGE_SIZE, addr += BXFI_PAGE_SIZE) {
         if (page_mapped(addr)) {
             move = 1;
             break;
@@ -546,7 +546,7 @@ find_chunk:
         while (newsize < oksize)
             newsize *= GROWTH_RATIO;
 
-        newsize = align2_up(newsize, PAGE_SIZE);
+        newsize = align2_up(newsize, BXFI_PAGE_SIZE);
         int rc = arena_resize(arena, newsize);
         if (rc < 0)
             return rc;
@@ -645,7 +645,7 @@ int bxf_arena_grow(bxf_arena *arena, bxf_ptr p, size_t size)
 
         intptr_t off = (intptr_t) *arena;
 
-        newsize = align2_up(newsize, PAGE_SIZE);
+        newsize = align2_up(newsize, BXFI_PAGE_SIZE);
         int rc = arena_resize(arena, newsize);
         if (rc < 0)
             return rc;

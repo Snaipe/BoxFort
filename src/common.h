@@ -61,7 +61,7 @@ static inline size_t pagesize(void) {
     return cached;
 }
 
-#define PAGE_SIZE (pagesize())
+#define BXFI_PAGE_SIZE (pagesize())
 
 #define bug(...) do {                               \
         fprintf(stderr, __VA_ARGS__);               \
