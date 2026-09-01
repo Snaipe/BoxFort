@@ -165,9 +165,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
         return 0;
     }
 
-    bxfi_exe_remapped_patch_main(addr, sizeof(opcodes), opcodes, sizeof(opcodes));
-
-    return 0;
+    return bxfi_exe_remapped_patch_main(addr, sizeof(opcodes), opcodes, sizeof(opcodes));
 }
 
 uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
