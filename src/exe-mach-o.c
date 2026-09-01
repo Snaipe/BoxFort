@@ -99,7 +99,7 @@ static int mem_protect(void *addr, size_t len, int prot)
 static int bxfi_exe_remapped_patch_main(void *addr, size_t len,
     const void *opcodes, size_t opcodes_len)
 {
-    mach_vm_address_t remapped;
+    mach_vm_address_t remapped = 0;
     vm_prot_t cur_prot;
     vm_prot_t max_prot;
 
@@ -165,9 +165,7 @@ int bxfi_exe_patch_main(bxfi_exe_fn *new_main)
         return 0;
     }
 
-    bxfi_exe_remapped_patch_main(addr, sizeof(opcodes), opcodes, sizeof(opcodes));
-
-    return 0;
+    return bxfi_exe_remapped_patch_main(addr, sizeof(opcodes), opcodes, sizeof(opcodes));
 }
 
 uintptr_t bxfi_slide_from_addr(const void *addr, const char **name, size_t *seg)
