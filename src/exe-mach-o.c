@@ -99,7 +99,7 @@ static int mem_protect(void *addr, size_t len, int prot)
 static int bxfi_exe_remapped_patch_main(void *addr, size_t len,
     const void *opcodes, size_t opcodes_len)
 {
-    mach_vm_address_t remapped;
+    mach_vm_address_t remapped = 0;
     vm_prot_t cur_prot;
     vm_prot_t max_prot;
 
