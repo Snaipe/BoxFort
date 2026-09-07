@@ -65,6 +65,15 @@ static intptr_t mmap_off_mask = 0x3fffff;
 
 static unsigned int mmap_seed;
 
+/* Where arenas get mapped: `mask + 1` candidate addresses `off` bytes apart,
+   starting at `base` and staying below `max`. */
+struct bxfi_mmap_window {
+    void *base;
+    void *max;
+    intptr_t off;
+    intptr_t mask;
+};
+
 static inline void *ptr_add(void *ptr, size_t off)
 {
     return (char *) ptr + off;
@@ -242,15 +251,19 @@ retry:  ;
     if (!mmap_seed)
         mmap_seed = bxfi_timestamp_monotonic();
 
+    const struct bxfi_mmap_window window = {
+        mmap_base, mmap_max, mmap_off, mmap_off_mask,
+    };
+
     intptr_t r;
     struct bxf_arena_s *a;
     int tries = 0;
 
     for (tries = 0; tries < MAP_RETRIES;) {
-        r = rand_r(&mmap_seed) & mmap_off_mask;
+        r = rand_r(&mmap_seed) & window.mask;
 
-        void *base = ptr_add(mmap_base, r * mmap_off);
-        if (base > mmap_max || base < mmap_base)
+        void *base = ptr_add(window.base, r * window.off);
+        if (base > window.max || base < window.base)
             continue;
 
         if (range_mapped(base, initial))
@@ -262,7 +275,7 @@ retry:  ;
         if (a == MAP_FAILED)
             goto error;
 
-        if ((void *) a < mmap_max && (void *) a > mmap_base)
+        if ((void *) a < window.max && (void *) a > window.base)
             break;
         munmap(a, initial);
 retry:  ;
