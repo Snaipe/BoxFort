@@ -29,17 +29,27 @@
 #endif
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
+/* C and Zca provide c.ld/c.jr; retain the legacy macro for older compilers. */
+#if defined(__riscv_c) || defined(__riscv_zca) || defined(__riscv_compressed)
+    /* 4 + 2 + 2 bytes of code, then the 8-byte address: one PLT entry. */
+    auipc   a0, 0
+    c.ld    a0, 8(a0)
+    c.jr    a0
+#else
     ld      a0, addr_data
     jr      a0
 
 /*
- *  On riscv64gc, these will expand into 3 instructions:
+ *  Without compressed instructions, these expand into 3 instructions:
  *  auipc   a0, 0x0         4 bytes
  *  ld      a0, offset(a0)  4 bytes
- *  jr      a0              2 bytes
- *  <addr_data>
+ *  jr      a0              4 bytes
+ *  <addr_data>             8 bytes
  *  'offset' is the length between `auipc` and `addr_data`.
+ *  This 20-byte fallback requires enough space in main's function body;
+ *  it does not fit in a 16-byte PLT entry.
  */
+#endif
 
 .align 1
 
