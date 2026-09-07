@@ -121,6 +121,17 @@ static int page_mapped(void *addr) {
 #endif
 }
 
+static inline int range_mapped(void *base, size_t size)
+{
+    for (void *addr = base; addr < ptr_add(base, size);
+            addr = ptr_add(addr, BXFI_PAGE_SIZE))
+    {
+        if (page_mapped(addr))
+            return 1;
+    }
+    return 0;
+}
+
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 {
     initial = align2_up(initial, BXFI_PAGE_SIZE);
@@ -163,12 +174,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         if (base > mmap_max || base < mmap_base)
             continue;
 
-        for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, BXFI_PAGE_SIZE))
-        {
-            if (page_mapped(addr))
-                goto retry;
-        }
+        if (range_mapped(base, initial))
+            goto retry;
 
         a = MapViewOfFileEx(hndl, FILE_MAP_WRITE, 0, 0, initial, base);
 
@@ -246,12 +253,8 @@ retry:  ;
         if (base > mmap_max || base < mmap_base)
             continue;
 
-        for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, BXFI_PAGE_SIZE))
-        {
-            if (page_mapped(addr))
-                goto retry;
-        }
+        if (range_mapped(base, initial))
+            goto retry;
 
         a = mmap(base, initial, PROT_READ | PROT_WRITE,
                 MAP_SHARED | MAP_FIXED, fd, 0);
