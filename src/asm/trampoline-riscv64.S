@@ -29,7 +29,8 @@
 #endif
 .globl MANGLE(bxfi_trampoline)
 MANGLE(bxfi_trampoline):
-#ifdef __riscv_compressed
+/* C and Zca provide c.ld/c.jr; retain the legacy macro for older compilers. */
+#if defined(__riscv_c) || defined(__riscv_zca) || defined(__riscv_compressed)
     /* 4 + 2 + 2 bytes of code, then the 8-byte address: one PLT entry. */
     auipc   a0, 0
     c.ld    a0, 8(a0)
