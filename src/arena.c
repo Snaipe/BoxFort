@@ -141,6 +141,44 @@ static inline int range_mapped(void *base, size_t size)
     return 0;
 }
 
+#ifndef _WIN32
+static int arena_map_window(int fd, size_t size,
+        const struct bxfi_mmap_window *w, struct bxf_arena_s **out)
+{
+    intptr_t r;
+    struct bxf_arena_s *a;
+    int tries = 0;
+
+    for (tries = 0; tries < MAP_RETRIES;) {
+        r = rand_r(&mmap_seed) & w->mask;
+
+        void *base = ptr_add(w->base, r * w->off);
+        if (base > w->max || base < w->base)
+            continue;
+
+        if (range_mapped(base, size))
+            goto retry;
+
+        a = mmap(base, size, PROT_READ | PROT_WRITE,
+                MAP_SHARED | MAP_FIXED, fd, 0);
+
+        if (a == MAP_FAILED)
+            return -1;
+
+        if ((void *) a < w->max && (void *) a > w->base)
+            break;
+        munmap(a, size);
+retry:  ;
+        ++tries;
+    }
+    if (tries == MAP_RETRIES)
+        return 0;
+
+    *out = a;
+    return 1;
+}
+#endif
+
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 {
     initial = align2_up(initial, BXFI_PAGE_SIZE);
@@ -255,33 +293,8 @@ retry:  ;
         mmap_base, mmap_max, mmap_off, mmap_off_mask,
     };
 
-    intptr_t r;
     struct bxf_arena_s *a;
-    int tries = 0;
-
-    for (tries = 0; tries < MAP_RETRIES;) {
-        r = rand_r(&mmap_seed) & window.mask;
-
-        void *base = ptr_add(window.base, r * window.off);
-        if (base > window.max || base < window.base)
-            continue;
-
-        if (range_mapped(base, initial))
-            goto retry;
-
-        a = mmap(base, initial, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_FIXED, fd, 0);
-
-        if (a == MAP_FAILED)
-            goto error;
-
-        if ((void *) a < window.max && (void *) a > window.base)
-            break;
-        munmap(a, initial);
-retry:  ;
-        ++tries;
-    }
-    if (tries == MAP_RETRIES)
+    if (arena_map_window(fd, initial, &window, &a) <= 0)
         goto error;
 
 #endif
