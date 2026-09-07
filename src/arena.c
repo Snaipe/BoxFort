@@ -162,8 +162,13 @@ static int arena_map_window(int fd, size_t size,
         a = mmap(base, size, PROT_READ | PROT_WRITE,
                 MAP_SHARED | MAP_FIXED, fd, 0);
 
-        if (a == MAP_FAILED)
-            return -1;
+        if (a == MAP_FAILED) {
+            if (errno != ENOMEM && errno != EINVAL)
+                return -1;
+
+            /* The address lies outside this kernel's user address space, try again */
+            goto retry;
+        }
 
         if ((void *) a < w->max && (void *) a > w->base)
             break;
@@ -289,13 +294,28 @@ retry:  ;
     if (!mmap_seed)
         mmap_seed = bxfi_timestamp_monotonic();
 
-    const struct bxfi_mmap_window window = {
-        mmap_base, mmap_max, mmap_off, mmap_off_mask,
+    /* Tried in order: the next window is only used when no candidate of the
+       previous one could be mapped. */
+    const struct bxfi_mmap_window windows[] = {
+        { mmap_base, mmap_max, mmap_off, mmap_off_mask },
+# if BXF_BITS == 64
+        /* 39-bit user address space (riscv64 Sv39, aarch64 with 39-bit VA):
+           the window above lies entirely outside it and every attempt fails.
+           Retry between 64 GiB and 192 GiB, 16 MiB apart. */
+        { (void *) 0x1000000000, (void *) 0x3f80000000,
+          (intptr_t) 1 << 24, 0x1fff },
+# endif
     };
 
     struct bxf_arena_s *a;
-    if (arena_map_window(fd, initial, &window, &a) <= 0)
+    int rc = 0;
+    for (size_t i = 0; rc == 0 && i < sizeof (windows) / sizeof (windows[0]); ++i)
+        rc = arena_map_window(fd, initial, &windows[i], &a);
+    if (rc <= 0) {
+        if (rc == 0)
+            errno = ENOMEM;
         goto error;
+    }
 
 #endif
 
