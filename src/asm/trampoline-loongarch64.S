@@ -28,7 +28,7 @@ MANGLE(bxfi_trampoline):
  */
     pcaddu12i	$t0, 0
     ld.d	$t0, $t0, 0xc
-    jirl	$ra, $t0, 0
+    jirl	$zero, $t0, 0
 
 .align 1
 
