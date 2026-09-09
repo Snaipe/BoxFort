@@ -54,7 +54,7 @@ static void *mmap_max  = (void *) 0x80000000;
 static intptr_t mmap_off = (intptr_t) 1 << 16;
 static intptr_t mmap_off_mask = 0x3fff;
 #elif BXF_BITS == 64
-/* On Linux it seems that you cannot map > 48-bit addresses */
+/* Start with a 48-bit virtual address window. */
 static void *mmap_base = (void *) 0x200000000000;
 static void *mmap_max  = (void *) 0x7f0000000000;
 static intptr_t mmap_off = (intptr_t) 1 << 24;
@@ -148,31 +148,42 @@ static int arena_map_window(int fd, size_t size,
     intptr_t r;
     struct bxf_arena_s *a;
     int tries = 0;
+# ifdef MAP_FIXED_NOREPLACE
+    int mmap_flags = MAP_SHARED | MAP_FIXED_NOREPLACE;
+# else
+    int mmap_flags = MAP_SHARED | MAP_FIXED;
+# endif
 
     for (tries = 0; tries < MAP_RETRIES;) {
         r = rand_r(&mmap_seed) & w->mask;
 
         void *base = ptr_add(w->base, r * w->off);
-        if (base > w->max || base < w->base)
-            continue;
-
-        if (range_mapped(base, size))
+        if (base >= w->max || base < w->base)
+            goto retry;
+        if (size > (uintptr_t) w->max - (uintptr_t) base)
             goto retry;
 
+# ifndef MAP_FIXED_NOREPLACE
+        if (range_mapped(base, size))
+            goto retry;
+# endif
+
         a = mmap(base, size, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_FIXED, fd, 0);
+                mmap_flags, fd, 0);
 
         if (a == MAP_FAILED) {
-            if (errno != ENOMEM && errno != EINVAL)
+            if (errno != ENOMEM && errno != EINVAL && errno != EEXIST)
                 return -1;
 
-            /* The address lies outside this kernel's user address space, try again */
+            /* These errors may depend on the chosen address; try another candidate. */
             goto retry;
         }
 
-        if ((void *) a < w->max && (void *) a > w->base)
+        /* Older kernels may ignore MAP_FIXED_NOREPLACE and relocate hints. */
+        if ((void *) a == base)
             break;
-        munmap(a, size);
+        if (munmap(a, size) == -1)
+            return -1;
 retry:  ;
         ++tries;
     }
