@@ -54,7 +54,7 @@ static void *mmap_max  = (void *) 0x80000000;
 static intptr_t mmap_off = (intptr_t) 1 << 16;
 static intptr_t mmap_off_mask = 0x3fff;
 #elif BXF_BITS == 64
-/* On Linux it seems that you cannot map > 48-bit addresses */
+/* Start with a 48-bit virtual address window. */
 static void *mmap_base = (void *) 0x200000000000;
 static void *mmap_max  = (void *) 0x7f0000000000;
 static intptr_t mmap_off = (intptr_t) 1 << 24;
@@ -64,6 +64,15 @@ static intptr_t mmap_off_mask = 0x3fffff;
 #endif
 
 static unsigned int mmap_seed;
+
+/* Where arenas get mapped: `mask + 1` candidate addresses `off` bytes apart,
+   starting at `base` and staying below `max`. */
+struct bxfi_mmap_window {
+    void *base;
+    void *max;
+    intptr_t off;
+    intptr_t mask;
+};
 
 static inline void *ptr_add(void *ptr, size_t off)
 {
@@ -121,6 +130,71 @@ static int page_mapped(void *addr) {
 #endif
 }
 
+static inline int range_mapped(void *base, size_t size)
+{
+    for (void *addr = base; addr < ptr_add(base, size);
+            addr = ptr_add(addr, BXFI_PAGE_SIZE))
+    {
+        if (page_mapped(addr))
+            return 1;
+    }
+    return 0;
+}
+
+#ifndef _WIN32
+static int arena_map_window(int fd, size_t size,
+        const struct bxfi_mmap_window *w, struct bxf_arena_s **out)
+{
+    intptr_t r;
+    struct bxf_arena_s *a;
+    int tries = 0;
+# ifdef MAP_FIXED_NOREPLACE
+    int mmap_flags = MAP_SHARED | MAP_FIXED_NOREPLACE;
+# else
+    int mmap_flags = MAP_SHARED | MAP_FIXED;
+# endif
+
+    for (tries = 0; tries < MAP_RETRIES;) {
+        r = rand_r(&mmap_seed) & w->mask;
+
+        void *base = ptr_add(w->base, r * w->off);
+        if (base >= w->max || base < w->base)
+            goto retry;
+        if (size > (uintptr_t) w->max - (uintptr_t) base)
+            goto retry;
+
+# ifndef MAP_FIXED_NOREPLACE
+        if (range_mapped(base, size))
+            goto retry;
+# endif
+
+        a = mmap(base, size, PROT_READ | PROT_WRITE,
+                mmap_flags, fd, 0);
+
+        if (a == MAP_FAILED) {
+            if (errno != ENOMEM && errno != EINVAL && errno != EEXIST)
+                return -1;
+
+            /* These errors may depend on the chosen address; try another candidate. */
+            goto retry;
+        }
+
+        /* Older kernels may ignore MAP_FIXED_NOREPLACE and relocate hints. */
+        if ((void *) a == base)
+            break;
+        if (munmap(a, size) == -1)
+            return -1;
+retry:  ;
+        ++tries;
+    }
+    if (tries == MAP_RETRIES)
+        return 0;
+
+    *out = a;
+    return 1;
+}
+#endif
+
 int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
 {
     initial = align2_up(initial, BXFI_PAGE_SIZE);
@@ -163,12 +237,8 @@ int bxf_arena_init(size_t initial, int flags, bxf_arena *arena)
         if (base > mmap_max || base < mmap_base)
             continue;
 
-        for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, BXFI_PAGE_SIZE))
-        {
-            if (page_mapped(addr))
-                goto retry;
-        }
+        if (range_mapped(base, initial))
+            goto retry;
 
         a = MapViewOfFileEx(hndl, FILE_MAP_WRITE, 0, 0, initial, base);
 
@@ -235,38 +305,28 @@ retry:  ;
     if (!mmap_seed)
         mmap_seed = bxfi_timestamp_monotonic();
 
-    intptr_t r;
+    /* Tried in order: the next window is only used when no candidate of the
+       previous one could be mapped. */
+    const struct bxfi_mmap_window windows[] = {
+        { mmap_base, mmap_max, mmap_off, mmap_off_mask },
+# if BXF_BITS == 64
+        /* 39-bit user address space (riscv64 Sv39, aarch64 with 39-bit VA):
+           the window above lies entirely outside it and every attempt fails.
+           Retry between 64 GiB and 192 GiB, 16 MiB apart. */
+        { (void *) 0x1000000000, (void *) 0x3f80000000,
+          (intptr_t) 1 << 24, 0x1fff },
+# endif
+    };
+
     struct bxf_arena_s *a;
-    int tries = 0;
-
-    for (tries = 0; tries < MAP_RETRIES;) {
-        r = rand_r(&mmap_seed) & mmap_off_mask;
-
-        void *base = ptr_add(mmap_base, r * mmap_off);
-        if (base > mmap_max || base < mmap_base)
-            continue;
-
-        for (void *addr = base; addr < ptr_add(base, initial);
-                addr = ptr_add(addr, BXFI_PAGE_SIZE))
-        {
-            if (page_mapped(addr))
-                goto retry;
-        }
-
-        a = mmap(base, initial, PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_FIXED, fd, 0);
-
-        if (a == MAP_FAILED)
-            goto error;
-
-        if ((void *) a < mmap_max && (void *) a > mmap_base)
-            break;
-        munmap(a, initial);
-retry:  ;
-        ++tries;
-    }
-    if (tries == MAP_RETRIES)
+    int rc = 0;
+    for (size_t i = 0; rc == 0 && i < sizeof (windows) / sizeof (windows[0]); ++i)
+        rc = arena_map_window(fd, initial, &windows[i], &a);
+    if (rc <= 0) {
+        if (rc == 0)
+            errno = ENOMEM;
         goto error;
+    }
 
 #endif
 
