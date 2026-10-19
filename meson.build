@@ -1,7 +1,7 @@
 project('boxfort', 'c',
 		meson_version   : '>= 0.48.0',
 		license         : 'MIT',
-		version         : '0.0.1',
+		version         : '0.1.9',
 		default_options : ['c_std=c99', 'warning_level=3', 'b_lundef=false', 'default_library=static'])
 
 # standard install directories
